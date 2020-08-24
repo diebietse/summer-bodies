@@ -1,0 +1,15 @@
+{
+  "folders": [
+    {
+      "path": "functions"
+    },
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
+  }
+}
