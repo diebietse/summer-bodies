@@ -41,6 +41,21 @@ export interface WeeklyResult {
   goal: number;
 }
 
+export interface OurEvent {
+  scrapeTime: Date;
+  id: string;
+  athleteId: string;
+  type: string;
+  distance: number;
+  movingTime: number;
+  elapsedTime: number;
+  totalElevationGain: number;
+  firstName: string;
+  lastName: string;
+  club: string;
+  eventName: string;
+}
+
 export interface ContestantFitcoin {
   name: string;
   fitcoin: number;

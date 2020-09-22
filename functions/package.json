@@ -17,7 +17,8 @@
     "ascii-table": "0.0.9",
     "axios": "^0.20.0",
     "firebase-admin": "^9.2.0",
-    "firebase-functions": "^3.11.0"
+    "firebase-functions": "^3.11.0",
+    "moment": "^2.27.0"
   },
   "devDependencies": {
     "ts-node": "^9.0.0",
