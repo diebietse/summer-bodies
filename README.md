@@ -32,13 +32,27 @@ Achieve a position on the leader boards at the end of each week and earn FitCoin
 | stravaBotId        | Name of the Strava bot account                                   |
 | stravaClientId     | Strava OAuth ID of the bot account                               |
 | stravaRefreshToken | Strava OAuth refresh token of the bot account                    |
-| stravaAccessToken  | Strava OAuth access token of the bot account                     |
 | stravaClientSecret | Strava OAuth client secret token of the bot account              |
 | stravaClubs        | Array of Strava clubs to monitor                                 |
 
 An example config upload is provided in [upload-config.ts][upload-config].
 
-Note that the scope of the Strava OAuth token must be set to `read,activity:read,activity:write`. More details on [Strava authentication documentation][strava-oauth] can be found on their website.
+### Strava OAuth Refresh Token
+
+To use the Strava API you will need an Oauth refresh token, to get that you will first need to create an [API application][strava-dev], you can then get your client ID and secret from the [strava api settings page][strava-api-settings]
+
+The scope of the Strava OAuth token must be set to `read,activity:read,activity:write`.
+Write permission is needed to create the weekly placeholder event
+
+More details on [Strava authentication][strava-oauth] can be found on their website.
+
+You can get a refresh token with the correct scope by running the [create-strava-token.ts][create-strava-token] script:
+
+```console
+npm run ts ./examples/create-strava-token.ts -- --clientId <your-client-id> --clientSecret <your-client-secret>
+```
+
+Authorize the OAuth login of the strava account you want to give access and you will get the refresh token
 
 ## Local Dev
 
@@ -51,4 +65,7 @@ For local development, service account credentials can be created by following [
 [slack-webhooks]: https://entersekt.slack.com/apps/A0F7XDUAZ-incoming-webhooks
 [strava]: https://www.strava.com
 [strava-oauth]: https://developers.strava.com/docs/authentication/
+[strava-api-settings]: https://www.strava.com/settings/api
 [upload-config]: functions/examples/upload-config.ts
+[create-strava-token]: functions/examples/create-strava-token.ts
+[strava-dev]: https://developers.strava.com/docs/getting-started/#account

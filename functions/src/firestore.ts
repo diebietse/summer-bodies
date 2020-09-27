@@ -75,7 +75,6 @@ export interface SummerBodiesConfig {
   stravaBotId: string;
   stravaClientId: string;
   stravaRefreshToken: string;
-  stravaAccessToken: string;
   stravaClientSecret: string;
   stravaClubs: string[];
 }
