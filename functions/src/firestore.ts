@@ -29,6 +29,10 @@ export class Firestore {
     await configRef.update({ stravaRefreshToken });
   }
 
+  static async uploadConfig(config: SummerBodiesConfig) {
+    configRef.set(config);
+  }
+
   static async storeFitcoin(fitcoinsContestants: ContestantFitcoin[], date: Date): Promise<void> {
     const collection = db.collection("fitcoin").doc(date.toDateString()).collection("athletes");
     fitcoinsContestants.forEach((contestant) => {

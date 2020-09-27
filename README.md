@@ -26,8 +26,6 @@ Achieve a position on the leader boards at the end of each week and earn FitCoin
 
 ## Configuration
 
-TODO Add config setup TS file?
-
 | Configuration Item | Description                                                      |
 | ------------------ | ---------------------------------------------------------------- |
 | slackWebhookUrl    | Set the [Slack Webhook][slack-webhooks] URL to post messages to. |
@@ -37,6 +35,10 @@ TODO Add config setup TS file?
 | stravaAccessToken  | Strava OAuth access token of the bot account                     |
 | stravaClientSecret | Strava OAuth client secret token of the bot account              |
 | stravaClubs        | Array of Strava clubs to monitor                                 |
+
+An example config upload is provided in [upload-config.ts][upload-config].
+
+Note that the scope of the Strava OAuth token must be set to `read,activity:read,activity:write`. More details on [Strava authentication documentation][strava-oauth] can be found on their website.
 
 ## Local Dev
 
@@ -48,3 +50,5 @@ For local development, service account credentials can be created by following [
 [slack]: https://slack.com
 [slack-webhooks]: https://entersekt.slack.com/apps/A0F7XDUAZ-incoming-webhooks
 [strava]: https://www.strava.com
+[strava-oauth]: https://developers.strava.com/docs/authentication/
+[upload-config]: functions/examples/upload-config.ts
