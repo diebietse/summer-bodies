@@ -40,7 +40,10 @@ TODO Add config setup TS file?
 
 ## Local Dev
 
+For local development, service account credentials can be created by following [getting started][getting-started] Google guide. Generate JSON service account credentials. Place the credentials in the project root directory and ensure it is named `service-account.json`.
+
 [firestore]: https://firebase.google.com/docs/firestore
+[getting-started]: https://cloud.google.com/docs/authentication/getting-started
 [google-functions]: https://cloud.google.com/functions
 [slack]: https://slack.com
 [slack-webhooks]: https://entersekt.slack.com/apps/A0F7XDUAZ-incoming-webhooks
