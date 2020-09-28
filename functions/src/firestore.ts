@@ -17,17 +17,20 @@ if (fs.existsSync(CUSTOM_SERVICE_ACCOUNT)) {
 }
 
 const db = admin.firestore();
+const configRef = db.collection("config").doc("config");
 
 export class Firestore {
   static async getConfig(): Promise<SummerBodiesConfig> {
-    const docRef = db.collection("config").doc("config");
-    const doc = (await docRef.get()).data();
+    const doc = (await configRef.get()).data();
     return doc as SummerBodiesConfig;
   }
 
-  static async updateRefreshToken(refreshToken: string) {
-    const docRef = db.collection("accessTokens").doc("bietbots");
-    await docRef.update({ refreshToken });
+  static async updateRefreshToken(stravaRefreshToken: string) {
+    await configRef.update({ stravaRefreshToken });
+  }
+
+  static async uploadConfig(config: SummerBodiesConfig) {
+    configRef.set(config);
   }
 
   static async storeFitcoin(fitcoinsContestants: ContestantFitcoin[], date: Date): Promise<void> {
