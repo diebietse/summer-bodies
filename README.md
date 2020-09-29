@@ -1,5 +1,8 @@
 # Summer Bodies
 
+[![build-status][build-badge]][build-link]
+[![license-badge][license-badge]][license-link]
+
 A simple [Slack][slack] bot that can monitor weekly [Strava][strava] group progress. The Slack bot runs in [Google Functions][google-functions]. A selectable number of groups can be monitored and the results can be posted to a slack channel using a configurable cron job. All configuration for the bot is stored in [Firestore][firestore].
 
 Members in each group can earn points in a group in 2 ways:
@@ -69,3 +72,7 @@ For local development, service account credentials can be created by following [
 [upload-config]: functions/examples/upload-config.ts
 [create-strava-token]: functions/examples/create-strava-token.ts
 [strava-dev]: https://developers.strava.com/docs/getting-started/#account
+[license-badge]: https://img.shields.io/badge/license-MIT-000000.svg
+[license-link]: https://github.com/diebietse/summer-bodies/blob/master/LICENSE
+[build-badge]: https://github.com/diebietse/summer-bodies/workflows/build/badge.svg?branch=master
+[build-link]: https://github.com/diebietse/summer-bodies/actions?query=workflow%3Abuild+branch%3Amaster
