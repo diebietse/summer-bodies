@@ -67,6 +67,7 @@ export class Challenge {
         event.groupings.forEach((grouping) => {
           let fitcoinAwarded: number = 5;
           for (let contestant of grouping.contestants) {
+            console.log(`${club.name}/${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`)
             let total = fitcoinTotals.get(contestant.name) || 0;
             total += fitcoinAwarded;
             fitcoinTotals.set(contestant.name, total);
@@ -77,6 +78,16 @@ export class Challenge {
           }
         });
       });
+    });
+
+    const progress = await Challenge.calculateProgress(activities);
+    progress.forEach((result) => {
+      if (result.achieved) {
+        console.log(`${result.name} weekly goal: 10 fitcoin`)
+        let total = fitcoinTotals.get(result.name) || 0;
+        total += 10;
+        fitcoinTotals.set(result.name, total);
+      }
     });
 
     let fitcoins: ContestantFitcoin[] = [];
