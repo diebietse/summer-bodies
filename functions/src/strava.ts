@@ -31,9 +31,12 @@ export class Strava {
     const stravaEvents = await Strava.getClubEvents(clubId, this.accessToken);
     const currentWeek = getCurrentWeek();
     let offset = 0;
+    console.log(`----- Looking for ${this.botId} in ${clubId} -----`)
     for (let stravaEvent of stravaEvents) {
       const athleteId = `${stravaEvent.athlete.firstname}-${stravaEvent.athlete.lastname}`;
+      console.log(`${athleteId} - ${stravaEvent.moving_time / 60} - ${stravaEvent.name}`)
       if (athleteId == this.botId) {
+        console.log("Bot Found!")
         break;
       }
       offset++;
