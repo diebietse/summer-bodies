@@ -14,7 +14,7 @@ async function printProgress() {
   const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
   const strava = new Strava(newToken.access_token, config.stravaBotId, config.stravaClubs);
 
-  const allActivities = await strava.getLastWeeksActivitiesAllClubs();
+  const allActivities = await strava.getThisWeeksActivitiesAllClubs();
   const progress = await Challenge.calculateProgress(allActivities);
   console.log(Format.goalStatus("In Progress Goal Status", progress));
 }

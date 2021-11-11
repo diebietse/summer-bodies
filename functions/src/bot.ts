@@ -82,9 +82,9 @@ export class Bot {
   static async createWeeklyPlaceholder(strava: Strava) {
     const activity: CreateActivityRequest = {
       name: "Weekly Activity",
-      type: "StandUpPaddling",
+      type: "Run",
       start_date_local: getCurrentWeek().toISOString(),
-      elapsed_time: 1,
+      elapsed_time: 1 * 60 * 20,
     };
 
     try {
