@@ -1,7 +1,7 @@
 import * as admin from "firebase-admin";
 import * as path from "path";
 import * as fs from "fs";
-import { ContestantFitcoin, compareContestantFitcoin } from "./challenge-models";
+import { ContestantFitcoin, compareContestantFitcoin, Athlete } from "./challenge-models";
 import moment from "moment";
 
 // service-account.json in the root directory of the project
@@ -67,6 +67,18 @@ export class Firestore {
   static async storeBackup(dataSnapshot: string) {
     const doc = db.collection("backups").doc(moment.utc().toISOString());
     await doc.create({ dataSnapshot });
+  }
+
+  static async getRegisteredAthletes(): Promise<Athlete[]> {
+    const collection = db.collection("athletes");
+    const athletes = await collection.listDocuments();
+    let res: Athlete[] = []
+    for (const athlete of athletes) {
+      const data = (await athlete.get()).data();
+      res.push(data as Athlete)
+    }
+
+    return res
   }
 }
 

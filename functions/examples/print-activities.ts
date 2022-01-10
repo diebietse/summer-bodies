@@ -12,15 +12,7 @@ import { Strava } from "../src/strava";
 async function printActivities() {
   const config = await Firestore.getConfig();
   const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
-  const athletes = [
-    {
-      id: "1",
-      firstname: "Jedri",
-      lastname: "Visser",
-      profile: "my picture url",
-      refreshToken: "<A_VALID_REFRESH_TOKEN>",
-    },
-  ];
+  const athletes = await Firestore.getRegisteredAthletes();
 
   try {
     let athletesWithActivities = await strava.getAllAthletesActivities(athletes);
