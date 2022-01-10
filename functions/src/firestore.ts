@@ -3,6 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { ContestantFitcoin, compareContestantFitcoin, Athlete } from "./challenge-models";
 import moment from "moment";
+import { TokenFromCodeResponse } from './strava';
 
 // service-account.json in the root directory of the project
 const CUSTOM_SERVICE_ACCOUNT = path.resolve(__dirname, "../../service-account.json");
@@ -80,6 +81,17 @@ export class Firestore {
 
     return res
   }
+  static async storeAthlete(data: TokenFromCodeResponse) {
+    const doc = db.collection("athletes").doc(data.athlete.id.toString());
+    const athlete = {
+      id: data.athlete.id,
+      firstname: data.athlete.firstname,
+      lastname: data.athlete.lastname,
+      profile: data.athlete.profile,
+      refreshToken: data.refresh_token
+    }
+    await doc.create({...athlete });
+  } 
 }
 
 export interface SummerBodiesConfig {

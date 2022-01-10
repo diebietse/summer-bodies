@@ -3,6 +3,7 @@ import { Athlete, Activity, AthleteWithActivities } from "./challenge-models";
 import { getCurrentWeekUnix } from "./util";
 
 const REFRESH_GRANT_TYPE = "refresh_token";
+const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code" 
 
 export class Strava {
   constructor(private clientId: string, private clientSecret: string) {}
@@ -26,6 +27,19 @@ export class Strava {
     const client = axios.create(Strava.axiosConfig(token.access_token));
     const start = getCurrentWeekUnix();
     const result = await client.get<Activity[]>(`/athlete/activities?after=${start}`);
+    return result.data;
+  }
+
+  static async getTokenFromCode(clientId: string, clientSecret: string, code: string): Promise<TokenFromCodeResponse> {
+    const client = axios.create(this.axiosConfig());
+
+    const req: TokenFromCodeRequest = {
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: AUTHORIZATION_CODE_GRANT_TYPE,
+      code,
+    };
+    const result = await client.post<TokenFromCodeResponse>("oauth/token", req);
     return result.data;
   }
 
@@ -67,6 +81,23 @@ export interface TokenRefreshRequest {
 export interface TokenRefreshResponse {
   access_token: string;
   refresh_token: string;
+}
+
+export interface TokenFromCodeRequest {
+  client_id: string;
+  client_secret: string;
+  grant_type: string;
+  code: string;
+}
+
+export interface TokenFromCodeResponse {
+  refresh_token: string;
+  athlete: {
+    id: number;
+    firstname: string;
+    lastname: string;
+    profile: string;
+  };
 }
 
 export interface CreateActivityRequest {

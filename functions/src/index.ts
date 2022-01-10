@@ -1,5 +1,7 @@
-// import * as functions from "firebase-functions";
+ import * as functions from "firebase-functions";
 // import { Bot } from "./bot";
+import express from "express";
+import { Server } from './server';
 
 // export const weekDaily0900 = functions.pubsub
 //   .schedule("0 9 * * *")
@@ -21,3 +23,8 @@
 //   .onRun(async (_context) => {
 //     await Bot.publishWeeklyResults();
 //   });
+
+const server = new Server();
+const expressServer = express();
+expressServer.use("/", server.server());
+export const httpServer = functions.https.onRequest(expressServer);
