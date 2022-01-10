@@ -9,8 +9,19 @@ export function getCurrentWeek(): Date {
   return now.startOf("isoWeek").toDate();
 }
 
+export function getCurrentWeekUnix(): number {
+  let now = moment.utc();
+  return now.startOf("isoWeek").unix();
+}
+
 export function getPreviousWeek(): Date {
   let now = moment.utc();
   const lastWeek = now.subtract(7, "days");
   return lastWeek.startOf("isoWeek").toDate();
+}
+
+export function getPreviousWeekUnix(): number {
+  let now = moment.utc();
+  const lastWeek = now.subtract(7, "days");
+  return lastWeek.startOf("isoWeek").unix();
 }

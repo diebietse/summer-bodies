@@ -66,3 +66,66 @@ export function compareContestantFitcoin(a: ContestantFitcoin, b: ContestantFitc
   if (a.fitcoin > b.fitcoin) return -1;
   return 0;
 }
+
+// subset of https://developers.strava.com/docs/reference/#api-models-SummaryActivity
+export interface Activity {
+  id: number;
+  name: string;
+  distance: number;
+  moving_time: number;
+  total_elevation_gain: number;
+  type: StravaActivityType;
+  start_date: string;
+}
+
+// subset of https://developers.strava.com/docs/reference/#api-models-DetailedAthlete
+export interface Athlete {
+  id: string;
+  firstname: string;
+  lastname: string;
+  profile: string;
+  refreshToken: string;
+}
+
+export interface AthleteWithActivities extends Athlete {
+  activities: Activity[];
+}
+
+type StravaActivityType =
+  | "AlpineSki"
+  | "BackcountrySki"
+  | "Canoeing"
+  | "Crossfit"
+  | "EBikeRide"
+  | "Elliptical"
+  | "Golf"
+  | "Handcycle"
+  | "Hike"
+  | "IceSkate"
+  | "InlineSkate"
+  | "Kayaking"
+  | "Kitesurf"
+  | "NordicSki"
+  | "Ride"
+  | "RockClimbing"
+  | "RollerSki"
+  | "Rowing"
+  | "Run"
+  | "Sail"
+  | "Skateboard"
+  | "Snowboard"
+  | "Snowshoe"
+  | "Soccer"
+  | "StairStepper"
+  | "StandUpPaddling"
+  | "Surfing"
+  | "Swim"
+  | "Velomobile"
+  | "VirtualRide"
+  | "VirtualRun"
+  | "Walk"
+  | "WeightTraining"
+  | "Wheelchair"
+  | "Windsurf"
+  | "Workout"
+  | "Yoga";
