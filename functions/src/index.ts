@@ -1,5 +1,5 @@
  import * as functions from "firebase-functions";
-// import { Bot } from "./bot";
+import { Bot } from "./bot";
 import express from "express";
 import { Server } from './server';
 
@@ -17,12 +17,12 @@ import { Server } from './server';
 //     await Bot.runWeeklyMaintenance();
 //   });
 
-// export const monday0930 = functions.pubsub
-//   .schedule("30 9 * * 1")
-//   .timeZone("Africa/Johannesburg")
-//   .onRun(async (_context) => {
-//     await Bot.publishWeeklyResults();
-//   });
+export const monday0930 = functions.pubsub
+  .schedule("30 9 * * 1")
+  .timeZone("Africa/Johannesburg")
+  .onRun(async (_context) => {
+    await Bot.publishWeeklyResults();
+  });
 
 const server = new Server();
 const expressServer = express();

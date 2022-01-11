@@ -1,10 +1,10 @@
-// import { Firestore } from "./firestore";
-// import { Strava, CreateActivityRequest } from "./strava";
-// import { Slack } from "./slack";
-// import { Format } from "./format";
-// import { Challenge } from "./challenge";
-// import { getCurrentWeek, getPreviousWeek } from "./util";
-// import { OurEvent } from "./challenge-models";
+import { Firestore } from "./firestore";
+import { Strava } from "./strava";
+import { Slack } from "./slack";
+import { Format } from "./format";
+import { AthleteWithActivities } from "./challenge-models";
+import { Challenge } from "./challenge";
+import { getPreviousWeek } from "./util";
 
 export class Bot {
   // static async publishDailyUpdates() {
@@ -26,19 +26,18 @@ export class Bot {
   //   await this.createWeeklyPlaceholder(strava);
   // }
 
-  // static async publishWeeklyResults() {
-  //   const config = await Firestore.getConfig();
-  //   const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
-  //   const strava = new Strava(newToken.access_token, config.stravaBotId, config.stravaClubs);
-  //   const slack = new Slack(config.slackWebhookUrl);
+  static async publishWeeklyResults() {
+    const config = await Firestore.getConfig();
+    const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
+    const slack = new Slack(config.slackWebhookUrl);
 
-  //   const allActivities = await strava.getLastWeeksActivitiesAllClubs();
+    const athletes = await Firestore.getRegisteredAthletes();
+    const allActivities = await strava.getAllAthletesActivities(athletes);
 
-  //   await this.publishFinalTop5s(slack, allActivities);
-  //   await this.publishFinalGoalStatus(slack, allActivities);
-  //   await this.publishWeeklyFitcoin(slack, allActivities);
-  //   await this.publishTotalFitcoin(slack);
-  // }
+    await this.publishFinalGoalStatus(slack, allActivities);
+    await this.publishWeeklyFitcoin(slack, allActivities);
+    await this.publishTotalFitcoin(slack);
+  }
 
   // private static async publishInProgressTop5s(strava: Strava, slack: Slack) {
   //   const allActivities = await strava.getThisWeeksActivitiesAllClubs();
@@ -56,17 +55,17 @@ export class Bot {
   //   }
   // }
 
-  // private static async publishWeeklyFitcoin(slack: Slack, allActivities: OurEvent[]) {
-  //   const contestantFitcoin = await Challenge.calculateFitcoin(allActivities);
-  //   const lastWeek = getPreviousWeek();
-  //   await Firestore.storeFitcoin(contestantFitcoin, lastWeek);
-  //   await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", contestantFitcoin));
-  // }
+  private static async publishWeeklyFitcoin(slack: Slack, allActivities: OurEvent[]) {
+    const contestantFitcoin = await Challenge.calculateFitcoin(allActivities);
+    const lastWeek = getPreviousWeek();
+    await Firestore.storeFitcoin(contestantFitcoin, lastWeek);
+    // await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", contestantFitcoin));
+  }
 
-  // private static async publishTotalFitcoin(slack: Slack) {
-  //   const totalFitcoin = await Firestore.getFitcoinTotals();
-  //   await slack.post(Format.fitcoinStatus("Total Fitcoin Results", totalFitcoin));
-  // }
+  private static async publishTotalFitcoin(slack: Slack) {
+    const totalFitcoin = await Firestore.getFitcoinTotals();
+    await slack.post(Format.fitcoinStatus("Total Fitcoin Results", totalFitcoin));
+  }
 
   // private static async publishInProgressGoalStatus(strava: Strava, slack: Slack) {
   //   const allActivities = await strava.getThisWeeksActivitiesAllClubs();
@@ -74,10 +73,10 @@ export class Bot {
   //   await slack.post(Format.goalStatus("In Progress Goal Status", progress));
   // }
 
-  // private static async publishFinalGoalStatus(slack: Slack, allActivities: OurEvent[]) {
-  //   const progress = await Challenge.calculateProgress(allActivities);
-  //   await slack.post(Format.goalStatus("Last Week's Goal Results", progress));
-  // }
+  private static async publishFinalGoalStatus(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {
+    const progress = await Challenge.calculateProgress(athletesWithActivities);
+    await slack.post(Format.goalStatus("Last Week's Goal Results", progress));
+  }
 
   // static async createWeeklyPlaceholder(strava: Strava) {
   //   const activity: CreateActivityRequest = {

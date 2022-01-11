@@ -46,7 +46,7 @@ export class Strava {
     const activities = await this.getAthleteActivities(athlete.refreshToken, startUnixTime, endUnixTime);
     return {
       ...athlete,
-      activities
+      activities,
     };
   }
 
