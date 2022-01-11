@@ -27,8 +27,8 @@ export default {
     
     try {
       console.log("posting");
-      await axios.post(`${firebaseURL}`, { code });
-      this.success = "Thank you for registering";
+      const response = await axios.post(`${firebaseURL}`, { code });
+      this.success = response.data.message
     } catch (error) {
       this.success = "Something went wrong...";
     }

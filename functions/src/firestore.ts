@@ -81,6 +81,14 @@ export class Firestore {
 
     return res
   }
+
+  static async athleteIsRegistered(athleteId: number): Promise<Boolean> {
+    const athlete = db.collection("athletes").doc(athleteId.toString());
+    return await athlete.get().then((data) => {
+      return data.exists
+    })
+  }
+
   static async storeAthlete(data: TokenFromCodeResponse) {
     const doc = db.collection("athletes").doc(data.athlete.id.toString());
     const athlete = {

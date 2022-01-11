@@ -10,8 +10,13 @@ export class Api {
       try {
         const config = await Firestore.getConfig();
         const token = await Strava.getTokenFromCode(config.stravaClientId, config.stravaClientSecret, code)
-        await Firestore.storeAthlete(token);
-        res.status(200).json({okay: true});
+        const alreadyRegistered = await Firestore.athleteIsRegistered(token.athlete.id)
+        if (alreadyRegistered) {
+          res.status(200).json({okay: true, message: "You are already registered"});
+        } else {
+          await Firestore.storeAthlete(token);
+          res.status(200).json({okay: true, message: "Thank you for registering"});
+        }
       }
       catch(error){
         const message = (error as { message : string}).message;
