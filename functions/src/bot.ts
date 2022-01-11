@@ -34,6 +34,7 @@ export class Bot {
     const athletes = await Firestore.getRegisteredAthletes();
     const allActivities = await strava.getAllAthletesActivities(athletes, getPreviousWeekUnix(), getCurrentWeekUnix());
 
+    await this.publishFinalTop5s(slack, allActivities);
     await this.publishFinalGoalStatus(slack, allActivities);
     await this.publishWeeklyFitcoin(slack, allActivities);
     await this.publishTotalFitcoin(slack);
@@ -48,12 +49,12 @@ export class Bot {
   //   }
   // }
 
-  // private static async publishFinalTop5s(slack: Slack, allActivities: OurEvent[]) {
-  //   const clubs = await Challenge.calculateActivities(allActivities);
-  //   for (const club of clubs) {
-  //     await slack.post(Format.finalClubTop5(club));
-  //   }
-  // }
+  private static async publishFinalTop5s(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {
+    const clubs = await Challenge.calculateActivities(athletesWithActivities);
+    for (const club of clubs) {
+      await slack.post(Format.finalClubTop5(club));
+    }
+  }
 
   private static async publishWeeklyFitcoin(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {
     const contestantFitcoin = await Challenge.calculateFitcoin(athletesWithActivities);

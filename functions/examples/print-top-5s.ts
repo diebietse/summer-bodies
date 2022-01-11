@@ -2,20 +2,25 @@
 // Requires:
 // * Valid config loaded on firestore (including strava credentials)
 // * A service-account.json file with a firestore service account in the project root directory
-// * Some activities this week in the configured Stava club
+// * Some activities this week in the configured Strava club
 
 import { Challenge } from "../src/challenge";
 import { Format } from "../src/format";
 import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";
+import { getPreviousWeekUnix, getCurrentWeekUnix } from "../src/util";
 
 async function printResults() {
   const config = await Firestore.getConfig();
-  const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
-  const strava = new Strava(newToken.access_token, config.stravaBotId, config.stravaClubs);
+  const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
+  const athletes = await Firestore.getRegisteredAthletes();
+  let athletesWithActivities = await strava.getAllAthletesActivities(
+    athletes,
+    getPreviousWeekUnix(),
+    getCurrentWeekUnix()
+  );
 
-  const allActivities = await strava.getThisWeeksActivitiesAllClubs();
-  const clubs = await Challenge.calculateActivities(allActivities);
+  let clubs = await Challenge.calculateActivities(athletesWithActivities);
 
   for (const club of clubs) {
     console.log(Format.inProgressClubTop5(club));
