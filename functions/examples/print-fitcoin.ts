@@ -9,6 +9,7 @@ import { Format } from "../src/format";
 import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";
 import axios from "axios";
+import { getCurrentWeekUnix, getPreviousWeekUnix } from "../src/util";
 
 async function printFitcoin() {
   const config = await Firestore.getConfig();
@@ -16,7 +17,7 @@ async function printFitcoin() {
   const athletes = await Firestore.getRegisteredAthletes();
 
   try {
-    let athletesWithActivities = await strava.getAllAthletesActivities(athletes);
+    let athletesWithActivities = await strava.getAllAthletesActivities(athletes, getPreviousWeekUnix(), getCurrentWeekUnix());
     const contestantFitcoins = await Challenge.calculateFitcoin(athletesWithActivities);
     console.log(Format.fitcoinStatus("This Week's Possible Fitcoin so far", contestantFitcoins));
   } catch (error) {

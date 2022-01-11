@@ -1,9 +1,9 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { Athlete, Activity, AthleteWithActivities } from "./challenge-models";
-import { getCurrentWeekUnix } from "./util";
 
 const REFRESH_GRANT_TYPE = "refresh_token";
-const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code" 
+const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code"
+const ACTIVITIES_PER_PAGE = 50
 
 export class Strava {
   constructor(private clientId: string, private clientSecret: string) {}
@@ -22,11 +22,10 @@ export class Strava {
     return result.data;
   }
 
-  async getAthleteActivities(refreshToken: string): Promise<Activity[]> {
+  async getAthleteActivities(refreshToken: string, startUnixTime: number, endUnixTime: number): Promise<Activity[]> {
     const token = await Strava.getToken(this.clientId, this.clientSecret, refreshToken);
     const client = axios.create(Strava.axiosConfig(token.access_token));
-    const start = getCurrentWeekUnix();
-    const result = await client.get<Activity[]>(`/athlete/activities?after=${start}`);
+    const result = await client.get<Activity[]>(`/athlete/activities?after=${startUnixTime}&before=${endUnixTime}&per_page=${ACTIVITIES_PER_PAGE}`);
     return result.data;
   }
 
@@ -43,18 +42,18 @@ export class Strava {
     return result.data;
   }
 
-  async populateAthleteActivities(athlete: Athlete): Promise<AthleteWithActivities> {
-    const activities = await this.getAthleteActivities(athlete.refreshToken);
+  async populateAthleteActivities(athlete: Athlete, startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities> {
+    const activities = await this.getAthleteActivities(athlete.refreshToken, startUnixTime, endUnixTime);
     return {
       ...athlete,
       activities
     };
   }
 
-  async getAllAthletesActivities(athletes: Athlete[]): Promise<AthleteWithActivities[]> {
+  async getAllAthletesActivities(athletes: Athlete[], startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities[]> {
     let activityPromises: Promise<AthleteWithActivities>[] = [];
     for (const athlete of athletes) {
-      activityPromises.push(this.populateAthleteActivities(athlete));
+      activityPromises.push(this.populateAthleteActivities(athlete, startUnixTime, endUnixTime));
     }
     return Promise.all(activityPromises);
   }
