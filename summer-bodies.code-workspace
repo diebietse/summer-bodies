@@ -14,6 +14,6 @@
     "[typescript]": {
       "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
-    "cSpell.words": ["strava"]
+    "cSpell.words": ["firestore", "fitcoin", "strava"]
   }
 }

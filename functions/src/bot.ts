@@ -4,7 +4,7 @@ import { Slack } from "./slack";
 import { Format } from "./format";
 import { AthleteWithActivities } from "./challenge-models";
 import { Challenge } from "./challenge";
-import { getPreviousWeek } from "./util";
+import { getCurrentWeekUnix, getPreviousWeek, getPreviousWeekUnix } from "./util";
 
 export class Bot {
   // static async publishDailyUpdates() {
@@ -32,7 +32,7 @@ export class Bot {
     const slack = new Slack(config.slackWebhookUrl);
 
     const athletes = await Firestore.getRegisteredAthletes();
-    const allActivities = await strava.getAllAthletesActivities(athletes);
+    const allActivities = await strava.getAllAthletesActivities(athletes, getPreviousWeekUnix(), getCurrentWeekUnix());
 
     await this.publishFinalGoalStatus(slack, allActivities);
     await this.publishWeeklyFitcoin(slack, allActivities);
@@ -55,8 +55,8 @@ export class Bot {
   //   }
   // }
 
-  private static async publishWeeklyFitcoin(slack: Slack, allActivities: OurEvent[]) {
-    const contestantFitcoin = await Challenge.calculateFitcoin(allActivities);
+  private static async publishWeeklyFitcoin(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {
+    const contestantFitcoin = await Challenge.calculateFitcoin(athletesWithActivities);
     const lastWeek = getPreviousWeek();
     await Firestore.storeFitcoin(contestantFitcoin, lastWeek);
     // await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", contestantFitcoin));
