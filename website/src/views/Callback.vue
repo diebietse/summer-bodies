@@ -19,6 +19,12 @@ export default {
       "https://us-central1-summer-bodies.cloudfunctions.net/httpServer/athlete";
 
     const code = this.$route.query.code;
+    const scopes = this.$route.query.scope.split(',');
+    if (!scopes.includes("read") || !scopes.includes("activity:read")) {
+      this.success = "Please ensure 'View data about your activities' is selected as well.";
+      return
+    }
+    
     try {
       console.log("posting");
       await axios.post(`${firebaseURL}`, { code });
