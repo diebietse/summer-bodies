@@ -42,13 +42,11 @@ export interface WeeklyResult {
 }
 
 export interface OurEvent {
-  scrapeTime: Date;
   id: string;
   athleteId: string;
   type: string;
   distance: number;
   movingTime: number;
-  elapsedTime: number;
   totalElevationGain: number;
   firstName: string;
   lastName: string;
@@ -85,6 +83,7 @@ export interface Athlete {
   lastname: string;
   profile: string;
   refreshToken: string;
+  club: string;
 }
 
 export interface AthleteWithActivities extends Athlete {

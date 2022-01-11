@@ -6,16 +6,16 @@ import {
   Contestant,
   StravaEvent,
   WeeklyResult,
-  // ContestantFitcoin,
+  ContestantFitcoin,
   OurEvent,
-  // compareContestantFitcoin,
+  compareContestantFitcoin,
   Activity,
-  // Athlete,
   AthleteWithActivities,
 } from "./challenge-models";
 
 export class Challenge {
-  static async calculateActivities(activities: OurEvent[]): Promise<Club[]> {
+  static async calculateActivities(athletes: AthleteWithActivities[]): Promise<Club[]> {
+    const activities = this.athletesToOurEvents(athletes)
     let clubs = new Map<string, OurEvent[]>();
     activities.forEach((activity) => {
       const club: OurEvent[] = clubs.get(activity.club) || [];
@@ -33,34 +33,6 @@ export class Challenge {
     }
     return allClubs.sort(this.compareClubs);
   }
-
-  // static async calculateProgress(activities: OurEvent[]): Promise<WeeklyResult[]> {
-  //   let athletes = new Map<string, OurEvent[]>();
-  //   activities.forEach((activity) => {
-  //     if (activity.movingTime >= 60 * 30) {
-  //       const validActivities: OurEvent[] = athletes.get(activity.athleteId) || [];
-  //       validActivities.push(activity);
-  //       athletes.set(activity.athleteId, validActivities);
-  //     }
-  //   });
-
-  //   let weekResults: WeeklyResult[] = [];
-  //   for (let [_, validActivities] of athletes) {
-  //     let achieved = false;
-  //     if (validActivities.length >= 3) {
-  //       achieved = true;
-  //     }
-  //     let result: WeeklyResult = {
-  //       name: `${validActivities[0].firstName} ${validActivities[0].lastName}`,
-  //       achieved: achieved,
-  //       activities: validActivities.length,
-  //       totalTimeMin: this.getTotalDurationMin(validActivities),
-  //       goal: 3,
-  //     };
-  //     weekResults.push(result);
-  //   }
-  //   return weekResults.sort(this.compareWeeklyResult);
-  // }
 
 
   static async calculateProgress(athletes: AthleteWithActivities[]): Promise<WeeklyResult[]> {
@@ -86,47 +58,47 @@ export class Challenge {
     return weekResults.sort(this.compareWeeklyResult);
   }
 
-  // static async calculateFitcoin(activities: OurEvent[]): Promise<ContestantFitcoin[]> {
-  //   let clubs = await this.calculateActivities(activities);
-  //   let fitcoinTotals = new Map<string, number>();
-  //   clubs.forEach((club) => {
-  //     club.events.forEach((event) => {
-  //       event.groupings.forEach((grouping) => {
-  //         let fitcoinAwarded: number = 5;
-  //         for (let contestant of grouping.contestants) {
-  //           console.log(`${club.name}/${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`)
-  //           let total = fitcoinTotals.get(contestant.name) || 0;
-  //           total += fitcoinAwarded;
-  //           fitcoinTotals.set(contestant.name, total);
-  //           fitcoinAwarded--;
-  //           if (fitcoinAwarded <= 0) {
-  //             break;
-  //           }
-  //         }
-  //       });
-  //     });
-  //   });
+  static async calculateFitcoin(athletes: AthleteWithActivities[]): Promise<ContestantFitcoin[]> {
+    let clubs = await this.calculateActivities(athletes);
+    let fitcoinTotals = new Map<string, number>();
+    clubs.forEach((club) => {
+      club.events.forEach((event) => {
+        event.groupings.forEach((grouping) => {
+          let fitcoinAwarded: number = 5;
+          for (let contestant of grouping.contestants) {
+            console.log(`${club.name}/${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`)
+            let total = fitcoinTotals.get(contestant.name) || 0;
+            total += fitcoinAwarded;
+            fitcoinTotals.set(contestant.name, total);
+            fitcoinAwarded--;
+            if (fitcoinAwarded <= 0) {
+              break;
+            }
+          }
+        });
+      });
+    });
 
-  //   const progress = await Challenge.calculateProgress(activities);
-  //   progress.forEach((result) => {
-  //     if (result.achieved) {
-  //       console.log(`${result.name} weekly goal: 10 fitcoin`)
-  //       let total = fitcoinTotals.get(result.name) || 0;
-  //       total += 10;
-  //       fitcoinTotals.set(result.name, total);
-  //     }
-  //   });
+    const progress = await Challenge.calculateProgress(athletes);
+    progress.forEach((result) => {
+      if (result.achieved) {
+        console.log(`${result.name} weekly goal: 10 fitcoin`)
+        let total = fitcoinTotals.get(result.name) || 0;
+        total += 10;
+        fitcoinTotals.set(result.name, total);
+      }
+    });
 
-  //   let fitcoins: ContestantFitcoin[] = [];
-  //   for (let [name, fitcoin] of fitcoinTotals) {
-  //     let contestant: ContestantFitcoin = {
-  //       name: name,
-  //       fitcoin: fitcoin,
-  //     };
-  //     fitcoins.push(contestant);
-  //   }
-  //   return fitcoins.sort(compareContestantFitcoin);
-  // }
+    let fitcoins: ContestantFitcoin[] = [];
+    for (let [name, fitcoin] of fitcoinTotals) {
+      let contestant: ContestantFitcoin = {
+        name: name,
+        fitcoin: fitcoin,
+      };
+      fitcoins.push(contestant);
+    }
+    return fitcoins.sort(compareContestantFitcoin);
+  }
 
   private static getTotalDurationMin(activities: Activity[]): number {
     let total: number = 0;
@@ -150,6 +122,29 @@ export class Challenge {
       eventResult.push(this.getEventGroupings(eventActivities, event));
     }
     return eventResult.sort(this.compareStravaEvents);
+  }
+
+
+  private static athletesToOurEvents(athletes: AthleteWithActivities[]): OurEvent[] {
+    let events: OurEvent[] = [];
+    for (let athlete of athletes) {
+      for(let activity of athlete.activities) {
+        const event: OurEvent = {
+          athleteId: athlete.id,
+          firstName: athlete.firstname,
+          lastName: athlete.lastname,
+          id: activity.id.toString(),
+          distance: activity.distance,
+          movingTime: activity.moving_time,
+          totalElevationGain: activity.total_elevation_gain,
+          eventName: activity.name,
+          type: activity.type.toString(),
+          club: athlete.club
+        }
+        events.push(event)
+      }
+    }
+    return events;
   }
 
   private static getEventGroupings(activities: OurEvent[], eventType: ActivityType): StravaEvent {

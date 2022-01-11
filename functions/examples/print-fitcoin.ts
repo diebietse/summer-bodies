@@ -8,16 +8,24 @@ import { Challenge } from "../src/challenge";
 import { Format } from "../src/format";
 import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";
+import axios from "axios";
 
 async function printFitcoin() {
   const config = await Firestore.getConfig();
-  const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
-  const strava = new Strava(newToken.access_token, config.stravaBotId, config.stravaClubs);
+  const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
+  const athletes = await Firestore.getRegisteredAthletes();
 
-  const allActivities = await strava.getThisWeeksActivitiesAllClubs();
-  const contestantFitcoins = await Challenge.calculateFitcoin(allActivities);
+  try {
+    let athletesWithActivities = await strava.getAllAthletesActivities(athletes);
+    const contestantFitcoins = await Challenge.calculateFitcoin(athletesWithActivities);
+    console.log(Format.fitcoinStatus("This Week's Possible Fitcoin so far", contestantFitcoins));
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.log(`Could not get activities: ${error.message}`);
+    }
+    process.exit(1);
+  }
 
-  console.log(Format.fitcoinStatus("This Week's Possible Fitcoin so far", contestantFitcoins));
 }
 
 printFitcoin();

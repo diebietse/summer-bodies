@@ -88,7 +88,8 @@ export class Firestore {
       firstname: data.athlete.firstname,
       lastname: data.athlete.lastname,
       profile: data.athlete.profile,
-      refreshToken: data.refresh_token
+      refreshToken: data.refresh_token,
+      club: "Group 1"
     }
     await doc.create({...athlete });
   } 
