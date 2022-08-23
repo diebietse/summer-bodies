@@ -18,14 +18,6 @@ export class Bot {
   //   await this.publishInProgressGoalStatus(strava, slack);
   // }
 
-  // static async runWeeklyMaintenance() {
-  //   const config = await Firestore.getConfig();
-  //   const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
-  //   const strava = new Strava(newToken.access_token, config.stravaBotId, config.stravaClubs);
-
-  //   await this.createWeeklyPlaceholder(strava);
-  // }
-
   static async publishWeeklyResults() {
     const config = await Firestore.getConfig();
     const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
@@ -78,20 +70,4 @@ export class Bot {
     const progress = await Challenge.calculateProgress(athletesWithActivities);
     await slack.post(Format.goalStatus("Last Week's Goal Results", progress));
   }
-
-  // static async createWeeklyPlaceholder(strava: Strava) {
-  //   const activity: CreateActivityRequest = {
-  //     name: "Weekly Activity",
-  //     type: "Run",
-  //     start_date_local: getCurrentWeek().toISOString(),
-  //     elapsed_time: 1 * 60 * 20,
-  //   };
-
-  //   try {
-  //     await strava.createActivity(activity);
-  //   } catch (e) {
-  //     console.error(`Error creating activity: ${e.response?.status} ${e.response?.statusText}`);
-  //     console.error(e.response?.data);
-  //   }
-  // }
 }
