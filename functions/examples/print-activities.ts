@@ -16,7 +16,11 @@ async function printActivities() {
   const athletes = await Firestore.getRegisteredAthletes();
 
   try {
-    let athletesWithActivities = await strava.getAllAthletesActivities(athletes, getPreviousWeekUnix(), getCurrentWeekUnix());
+    let athletesWithActivities = await strava.getAllAthletesActivities(
+      athletes,
+      getPreviousWeekUnix(),
+      getCurrentWeekUnix()
+    );
     const progress = await Challenge.calculateProgress(athletesWithActivities);
     console.log(Format.goalStatus("In Progress Goal Status", progress));
   } catch (error) {
@@ -25,7 +29,6 @@ async function printActivities() {
     }
     process.exit(1);
   }
-
 }
 
 printActivities();

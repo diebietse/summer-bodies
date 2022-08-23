@@ -8,13 +8,14 @@ import { Challenge } from "../src/challenge";
 import { Format } from "../src/format";
 import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";
+import { getCurrentWeekUnix, now } from "../src/util";
 
 async function printProgress() {
   const config = await Firestore.getConfig();
-  const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
-  const strava = new Strava(newToken.access_token, config.stravaBotId, config.stravaClubs);
+  const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
 
-  const allActivities = await strava.getThisWeeksActivitiesAllClubs();
+  const athletes = await Firestore.getRegisteredAthletes();
+  const allActivities = await strava.getAllAthletesActivities(athletes, getCurrentWeekUnix(), now());
   const progress = await Challenge.calculateProgress(allActivities);
   console.log(Format.goalStatus("In Progress Goal Status", progress));
 }

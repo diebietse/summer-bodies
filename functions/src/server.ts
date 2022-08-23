@@ -1,7 +1,7 @@
 import * as express from "express";
 import cors from "cors";
 import { Router } from "express";
-import { Api } from './api';
+import { Api } from "./api";
 
 export class Server {
   private router = Router();

@@ -17,7 +17,11 @@ async function printFitcoin() {
   const athletes = await Firestore.getRegisteredAthletes();
 
   try {
-    let athletesWithActivities = await strava.getAllAthletesActivities(athletes, getPreviousWeekUnix(), getCurrentWeekUnix());
+    let athletesWithActivities = await strava.getAllAthletesActivities(
+      athletes,
+      getPreviousWeekUnix(),
+      getCurrentWeekUnix()
+    );
     const contestantFitcoins = await Challenge.calculateFitcoin(athletesWithActivities);
     console.log(Format.fitcoinStatus("This Week's Possible Fitcoin so far", contestantFitcoins));
   } catch (error) {
@@ -26,7 +30,6 @@ async function printFitcoin() {
     }
     process.exit(1);
   }
-
 }
 
 printFitcoin();
