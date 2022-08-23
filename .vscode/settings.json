@@ -1,0 +1,15 @@
+{
+  "editor.wordWrapColumn": 120,
+  "files.eol": "\n",
+  // prettier-ignore
+  "cSpell.words": [
+    "strava"
+  ],
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+}
+
