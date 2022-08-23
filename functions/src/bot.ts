@@ -25,6 +25,7 @@ export class Bot {
 
     const athletes = await Firestore.getRegisteredAthletes();
     const allActivities = await strava.getAllAthletesActivities(athletes, getPreviousWeekUnix(), getCurrentWeekUnix());
+    Firestore.updateAthletesRefreshToken(allActivities);
 
     await this.publishFinalTop5s(slack, allActivities);
     await this.publishFinalGoalStatus(slack, allActivities);
