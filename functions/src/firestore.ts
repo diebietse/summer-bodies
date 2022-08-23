@@ -3,7 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { ContestantFitcoin, compareContestantFitcoin, Athlete } from "./challenge-models";
 import moment from "moment";
-import { TokenFromCodeResponse } from './strava';
+import { TokenFromCodeResponse } from "./strava";
 
 // service-account.json in the root directory of the project
 const CUSTOM_SERVICE_ACCOUNT = path.resolve(__dirname, "../../service-account.json");
@@ -73,20 +73,20 @@ export class Firestore {
   static async getRegisteredAthletes(): Promise<Athlete[]> {
     const collection = db.collection("athletes");
     const athletes = await collection.listDocuments();
-    let res: Athlete[] = []
+    let res: Athlete[] = [];
     for (const athlete of athletes) {
       const data = (await athlete.get()).data();
-      res.push(data as Athlete)
+      res.push(data as Athlete);
     }
 
-    return res
+    return res;
   }
 
   static async athleteIsRegistered(athleteId: number): Promise<Boolean> {
     const athlete = db.collection("athletes").doc(athleteId.toString());
     return await athlete.get().then((data) => {
-      return data.exists
-    })
+      return data.exists;
+    });
   }
 
   static async storeAthlete(data: TokenFromCodeResponse) {
@@ -97,10 +97,19 @@ export class Firestore {
       lastname: data.athlete.lastname,
       profile: data.athlete.profile,
       refreshToken: data.refresh_token,
-      club: "Group 1"
+      club: "Group 1",
+    };
+    await doc.create({ ...athlete });
+  }
+
+  static async updateAthletesRefreshToken(athletes: Athlete[]) {
+    for (const athlete of athletes) {
+      const doc = db.collection("athletes").doc(athlete.id.toString());
+      doc.update({
+        refreshToken: athlete.refreshToken,
+      });
     }
-    await doc.create({...athlete });
-  } 
+  }
 }
 
 export interface SummerBodiesConfig {

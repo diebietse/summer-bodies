@@ -22,9 +22,8 @@ export class Strava {
     return result.data;
   }
 
-  async getAthleteActivities(refreshToken: string, startUnixTime: number, endUnixTime: number): Promise<Activity[]> {
-    const token = await Strava.getToken(this.clientId, this.clientSecret, refreshToken);
-    const client = axios.create(Strava.axiosConfig(token.access_token));
+  async getAthleteActivities(accessToken: string, startUnixTime: number, endUnixTime: number): Promise<Activity[]> {
+    const client = axios.create(Strava.axiosConfig(accessToken));
     const result = await client.get<Activity[]>(`/athlete/activities?after=${startUnixTime}&before=${endUnixTime}&per_page=${ACTIVITIES_PER_PAGE}`);
     return result.data;
   }
@@ -43,7 +42,9 @@ export class Strava {
   }
 
   async populateAthleteActivities(athlete: Athlete, startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities> {
-    const activities = await this.getAthleteActivities(athlete.refreshToken, startUnixTime, endUnixTime);
+    const token = await Strava.getToken(this.clientId, this.clientSecret, athlete.refreshToken);
+    athlete.refreshToken = token.refresh_token;
+    const activities = await this.getAthleteActivities(token.access_token, startUnixTime, endUnixTime);
     return {
       ...athlete,
       activities,
