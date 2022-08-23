@@ -3,6 +3,9 @@
   "files.eol": "\n",
   // prettier-ignore
   "cSpell.words": [
+    "firestore",
+    "fitcoin",
+    "fitcoins",
     "strava"
   ],
   "[typescript]": {
