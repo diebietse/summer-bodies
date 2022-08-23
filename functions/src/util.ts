@@ -4,6 +4,11 @@ export async function waitMilliseconds(milliseconds: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+export function now(): number {
+  let now = moment.utc();
+  return now.unix();
+}
+
 export function getCurrentWeek(): Date {
   let now = moment.utc();
   return now.startOf("isoWeek").toDate();

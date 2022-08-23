@@ -15,7 +15,7 @@ import {
 
 export class Challenge {
   static async calculateActivities(athletes: AthleteWithActivities[]): Promise<Club[]> {
-    const activities = this.athletesToOurEvents(athletes)
+    const activities = this.athletesToOurEvents(athletes);
     let clubs = new Map<string, OurEvent[]>();
     activities.forEach((activity) => {
       const club: OurEvent[] = clubs.get(activity.club) || [];
@@ -34,11 +34,10 @@ export class Challenge {
     return allClubs.sort(this.compareClubs);
   }
 
-
   static async calculateProgress(athletes: AthleteWithActivities[]): Promise<WeeklyResult[]> {
     let weekResults: WeeklyResult[] = [];
     for (let athlete of athletes) {
-      const validActivities: Activity[] = []
+      const validActivities: Activity[] = [];
       athlete.activities.forEach((activity) => {
         if (activity.moving_time >= 60 * 30) {
           validActivities.push(activity);
@@ -61,13 +60,13 @@ export class Challenge {
   static async calculateFitcoin(athletes: AthleteWithActivities[]): Promise<ContestantFitcoin[]> {
     let clubs = await this.calculateActivities(athletes);
     let fitcoinTotals = new Map<string, number>();
-  
+
     clubs.forEach((club) => {
       club.events.forEach((event) => {
         event.groupings.forEach((grouping) => {
           let fitcoinAwarded: number = 5;
           for (let contestant of grouping.contestants) {
-            console.log(`${club.name}/${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`)
+            console.log(`${club.name}/${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`);
             let total = fitcoinTotals.get(contestant.name) || 0;
             total += fitcoinAwarded;
             fitcoinTotals.set(contestant.name, total);
@@ -83,7 +82,7 @@ export class Challenge {
     const progress = await Challenge.calculateProgress(athletes);
     progress.forEach((result) => {
       if (result.achieved) {
-        console.log(`${result.name} weekly goal: 10 fitcoin`)
+        console.log(`${result.name} weekly goal: 10 fitcoin`);
         let total = fitcoinTotals.get(result.name) || 0;
         total += 10;
         fitcoinTotals.set(result.name, total);
@@ -125,11 +124,10 @@ export class Challenge {
     return eventResult.sort(this.compareStravaEvents);
   }
 
-
   private static athletesToOurEvents(athletes: AthleteWithActivities[]): OurEvent[] {
     let events: OurEvent[] = [];
     for (let athlete of athletes) {
-      for(let activity of athlete.activities) {
+      for (let activity of athlete.activities) {
         const event: OurEvent = {
           athleteId: athlete.id,
           firstName: athlete.firstname,
@@ -140,9 +138,9 @@ export class Challenge {
           totalElevationGain: activity.total_elevation_gain,
           eventName: activity.name,
           type: activity.type.toString(),
-          club: athlete.club
-        }
-        events.push(event)
+          club: athlete.club,
+        };
+        events.push(event);
       }
     }
     return events;

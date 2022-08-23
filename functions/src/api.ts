@@ -1,6 +1,6 @@
 import { Request, Response, Router } from "express";
-import { Firestore } from './firestore';
-import { Strava } from './strava';
+import { Firestore } from "./firestore";
+import { Strava } from "./strava";
 export class Api {
   private router = Router();
 
@@ -9,20 +9,18 @@ export class Api {
       const { code } = req.body;
       try {
         const config = await Firestore.getConfig();
-        const token = await Strava.getTokenFromCode(config.stravaClientId, config.stravaClientSecret, code)
-        const alreadyRegistered = await Firestore.athleteIsRegistered(token.athlete.id)
+        const token = await Strava.getTokenFromCode(config.stravaClientId, config.stravaClientSecret, code);
+        const alreadyRegistered = await Firestore.athleteIsRegistered(token.athlete.id);
         if (alreadyRegistered) {
-          res.status(200).json({okay: true, message: "You are already registered"});
+          res.status(200).json({ okay: true, message: "You are already registered" });
         } else {
           await Firestore.storeAthlete(token);
-          res.status(200).json({okay: true, message: "Thank you for registering"});
+          res.status(200).json({ okay: true, message: "Thank you for registering" });
         }
+      } catch (error) {
+        const message = (error as { message: string }).message;
+        res.status(400).json({ error: message });
       }
-      catch(error){
-        const message = (error as { message : string}).message;
-        res.status(400).json({error: message})
-      }
-      
     });
   }
 

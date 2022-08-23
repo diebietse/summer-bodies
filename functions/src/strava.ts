@@ -2,8 +2,8 @@ import axios, { AxiosRequestConfig } from "axios";
 import { Athlete, Activity, AthleteWithActivities } from "./challenge-models";
 
 const REFRESH_GRANT_TYPE = "refresh_token";
-const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code"
-const ACTIVITIES_PER_PAGE = 50
+const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code";
+const ACTIVITIES_PER_PAGE = 50;
 
 export class Strava {
   constructor(private clientId: string, private clientSecret: string) {}
@@ -24,7 +24,9 @@ export class Strava {
 
   async getAthleteActivities(accessToken: string, startUnixTime: number, endUnixTime: number): Promise<Activity[]> {
     const client = axios.create(Strava.axiosConfig(accessToken));
-    const result = await client.get<Activity[]>(`/athlete/activities?after=${startUnixTime}&before=${endUnixTime}&per_page=${ACTIVITIES_PER_PAGE}`);
+    const result = await client.get<Activity[]>(
+      `/athlete/activities?after=${startUnixTime}&before=${endUnixTime}&per_page=${ACTIVITIES_PER_PAGE}`
+    );
     return result.data;
   }
 
@@ -41,7 +43,11 @@ export class Strava {
     return result.data;
   }
 
-  async populateAthleteActivities(athlete: Athlete, startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities> {
+  async populateAthleteActivities(
+    athlete: Athlete,
+    startUnixTime: number,
+    endUnixTime: number
+  ): Promise<AthleteWithActivities> {
     const token = await Strava.getToken(this.clientId, this.clientSecret, athlete.refreshToken);
     athlete.refreshToken = token.refresh_token;
     const activities = await this.getAthleteActivities(token.access_token, startUnixTime, endUnixTime);
@@ -51,7 +57,11 @@ export class Strava {
     };
   }
 
-  async getAllAthletesActivities(athletes: Athlete[], startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities[]> {
+  async getAllAthletesActivities(
+    athletes: Athlete[],
+    startUnixTime: number,
+    endUnixTime: number
+  ): Promise<AthleteWithActivities[]> {
     let activityPromises: Promise<AthleteWithActivities>[] = [];
     for (const athlete of athletes) {
       activityPromises.push(this.populateAthleteActivities(athlete, startUnixTime, endUnixTime));
@@ -110,24 +120,3 @@ export interface CreateActivityRequest {
   trainer?: number;
   commute?: number;
 }
-
-// interface StravaEvent {
-//   athlete: StravaAthlete;
-//   name: string;
-//   distance: number;
-//   moving_time: number;
-//   elapsed_time: number;
-//   total_elevation_gain: number;
-//   type: string;
-// }
-
-// // subset of https://developers.strava.com/docs/reference/#api-models-SummaryActivity
-// interface StravaActivity {
-//   id: number;
-//   name: string;
-//   distance: number;
-//   moving_time: number;
-//   total_elevation_gain: number;
-//   type: ActivityType;
-//   start_date: string;
-// }
