@@ -15,23 +15,25 @@ export default {
   },
   async mounted() {
     console.log("Mounted");
-    const firebaseURL =
-      "https://us-central1-summer-bodies.cloudfunctions.net/httpServer/athlete";
+    const firebaseURL = "https://us-central1-summer-bodies.cloudfunctions.net/httpServer/athlete";
 
     const code = this.$route.query.code;
-    const scopes = this.$route.query.scope.split(',');
+    const scopes = this.$route.query.scope.split(",");
     if (!scopes.includes("read") || !scopes.includes("activity:read")) {
       this.success = "Please ensure 'View data about your activities' is selected as well.";
-      return
+      return;
     }
-    
+
     try {
       console.log("posting");
       const response = await axios.post(`${firebaseURL}`, { code });
-      this.success = response.data.message
+      this.success = response.data.message;
     } catch (error) {
       this.success = "Something went wrong...";
     }
+  },
+  created() {
+    document.title = "Summer Bodies";
   },
 };
 </script>
