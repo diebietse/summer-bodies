@@ -1,20 +1,36 @@
 // Run with: npm run ts ./examples/calculate-progress.ts
 
 import { Challenge } from "../src/challenge";
-import { OurEvent } from "../src/challenge-models";
+import { AthleteWithActivities } from "../src/challenge-models";
 
-const activities: OurEvent[] = [
+const activities: AthleteWithActivities[] = [
   {
-    id: "some-event-id",
-    athleteId: "some-athlete-id",
-    type: "Cycling",
-    distance: 1,
-    movingTime: 60 * 30,
-    totalElevationGain: 1,
-    firstName: "John",
-    lastName: "Smith",
+    id: "some-athlete-id",
+    firstname: "John",
+    lastname: "Smith",
     club: "The Best Club",
-    eventName: "I cycled too much",
+    profile: "",
+    refreshToken: "",
+    activities: [
+      {
+        id: 1,
+        type: "Golf",
+        distance: 1,
+        moving_time: 60 * 30,
+        total_elevation_gain: 1,
+        name: "I cycled too much",
+        start_date: "now",
+      },
+      {
+        id: 2,
+        type: "Golf",
+        distance: 1,
+        moving_time: 60 * 30,
+        total_elevation_gain: 1,
+        name: "I cycled too much",
+        start_date: "now",
+      },
+    ],
   },
 ];
 
