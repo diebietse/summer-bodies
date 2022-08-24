@@ -55,7 +55,9 @@ export class Format {
     const table = new AsciiTable();
     table.setHeading("NAME", "TOTAL QUALIFYING TIME", "WEEKLY GOAL");
     weeklyResults.forEach((weeklyResult) => {
-      table.addRow(weeklyResult.name, `${weeklyResult.totalTimeMin}min`, Format.activityCount(weeklyResult));
+      if (weeklyResult.activities > 0) {
+        table.addRow(weeklyResult.name, `${weeklyResult.totalTimeMin}min`, Format.activityCount(weeklyResult));
+      }
     });
     return table.toString();
   }
