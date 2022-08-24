@@ -2,7 +2,38 @@
   <div class="home">
     <img alt="Vue logo" src="../assets/logo_dark.png" />
     <h1>Wellness Program</h1>
-    <button type="button" @click="login" class="btn btn-lg btn-primary">Register</button>
+    <div class="py-3">
+      <div class="form-check">
+        <input
+          class="form-check-input"
+          type="radio"
+          value="Group 1"
+          v-model="group"
+          name="flexRadioDefault"
+          id="flexRadioDefault1"
+        />
+        <label class="form-check-label" for="flexRadioDefault1">
+          I exercise a lot! (3+ times a week)
+        </label>
+      </div>
+      <div class="form-check">
+        <input
+          class="form-check-input"
+          type="radio"
+          value="Group 2"
+          v-model="group"
+          name="flexRadioDefault"
+          id="flexRadioDefault2"
+        />
+        <label class="form-check-label" for="flexRadioDefault2">
+          I exercise sometimes (less than 3 times a week)
+        </label>
+      </div>
+    </div>
+
+    <button type="button" @click="login" class="btn btn-lg btn-primary">
+      Register
+    </button>
   </div>
 </template>
 
@@ -10,8 +41,14 @@
 export default {
   name: "Home",
   components: {},
+  data() {
+    return {
+      group: "Group 1",
+    };
+  },
   methods: {
     login() {
+      localStorage.setItem("groupSetting", this.group);
       window.location =
         "https://www.strava.com/oauth/authorize?client_id=52883&response_type=code&scope=activity:read&redirect_uri=https://summer-bodies.web.app/callback";
     },

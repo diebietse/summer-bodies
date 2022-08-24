@@ -89,7 +89,7 @@ export class Firestore {
     });
   }
 
-  static async storeAthlete(data: TokenFromCodeResponse) {
+  static async storeAthlete(data: TokenFromCodeResponse, group?: string) {
     const doc = db.collection("athletes").doc(data.athlete.id.toString());
     const athlete = {
       id: data.athlete.id,
@@ -97,7 +97,7 @@ export class Firestore {
       lastname: data.athlete.lastname,
       profile: data.athlete.profile,
       refreshToken: data.refresh_token,
-      club: "Group 1",
+      club: group || "Group 1",
     };
     await doc.create({ ...athlete });
   }
