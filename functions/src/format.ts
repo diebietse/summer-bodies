@@ -1,4 +1,5 @@
 import AsciiTable from "ascii-table";
+import moment from "moment";
 import { StravaEvent, Club, WeeklyResult, ContestantFitcoin } from "./challenge-models";
 
 export class Format {
@@ -38,7 +39,12 @@ export class Format {
         const contestant = group.contestants[i];
         if (contestant) {
           anyResult = true;
-          row.push(contestant.name, `${contestant.total}${group.unit}`);
+          if (group.unit  == "min/km") {
+            const pace = moment.utc(moment.duration(contestant.total, 'minutes').asMilliseconds()).format('m:ss')
+            row.push(contestant.name, `${pace}${group.unit}`);
+          } else {
+            row.push(contestant.name, `${contestant.total}${group.unit}`);
+          }
         } else {
           row.push("", "");
         }

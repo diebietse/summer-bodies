@@ -121,7 +121,26 @@ export class Challenge {
     for (let [event, eventActivities] of events) {
       eventResult.push(this.getEventGroupings(eventActivities, event));
     }
+    eventResult.push(this.getMileChallengeGroupings(activities))
     return eventResult.sort(this.compareStravaEvents);
+  }
+
+  private static getMileChallengeGroupings(activities: OurEvent[]): StravaEvent {
+    const mileEvents = activities.filter(this.isMileEvent)
+
+    let event: StravaEvent = {
+      name: ActivityType.MileChallenge,
+      groupings: [
+        this.getGroupingTotals(mileEvents, GroupingType.Attempts),
+        this.getGroupingTotals(mileEvents, GroupingType.Pace)
+      ]
+    }
+
+    return event;
+  } 
+
+  private static isMileEvent(activity: OurEvent): boolean {
+    return activity.type == "Run" && activity.distance > 1500 && activity.distance < 2000
   }
 
   private static athletesToOurEvents(athletes: AthleteWithActivities[]): OurEvent[] {
@@ -136,6 +155,7 @@ export class Challenge {
           distance: activity.distance,
           movingTime: activity.moving_time,
           totalElevationGain: activity.total_elevation_gain,
+          averageSpeed: activity.average_speed,
           eventName: activity.name,
           type: activity.type.toString(),
           club: athlete.club,
@@ -182,6 +202,8 @@ export class Challenge {
       Distance: "km",
       Duration: "min",
       Elevation: "m",
+      Attempts: "",
+      Pace: "min/km"
     };
 
     activities.forEach((activity) => {
@@ -192,7 +214,12 @@ export class Challenge {
           total: 0,
         };
       }
-      contestant.total = contestant.total + this.getGroupingValue(activity, type);
+      if (type != GroupingType.Pace) {
+        contestant.total = contestant.total + this.getGroupingValue(activity, type);
+      } else {
+        contestant.total = Math.max(contestant.total, this.getGroupingValue(activity, type))
+      }
+      
       contestants.set(activity.athleteId, contestant);
     });
 
@@ -213,6 +240,10 @@ export class Challenge {
         return Math.round(activity.movingTime / 60);
       case GroupingType.Elevation:
         return Math.round(activity.totalElevationGain);
+      case GroupingType.Attempts:
+        return 1
+      case GroupingType.Pace:
+        return 1000/(60 * activity.averageSpeed)
     }
   }
 

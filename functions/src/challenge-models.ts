@@ -2,11 +2,14 @@ export enum GroupingType {
   Distance = "Distance",
   Duration = "Duration",
   Elevation = "Elevation",
+  Attempts = "Attempts",
+  Pace = "Pace"
 }
 
 export enum ActivityType {
   OnFoot = "On Foot", // Hike, Run, Walk
   OnWheels = "On Wheels", // Ride
+  MileChallenge = "Mile Challenge",
   Other = "Other",
 }
 
@@ -48,6 +51,7 @@ export interface OurEvent {
   distance: number;
   movingTime: number;
   totalElevationGain: number;
+  averageSpeed: number;
   firstName: string;
   lastName: string;
   club: string;
@@ -72,6 +76,7 @@ export interface Activity {
   distance: number;
   moving_time: number;
   total_elevation_gain: number;
+  average_speed: number;
   type: StravaActivityType;
   start_date: string;
 }
