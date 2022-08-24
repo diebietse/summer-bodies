@@ -62,11 +62,22 @@ export class Strava {
     startUnixTime: number,
     endUnixTime: number
   ): Promise<AthleteWithActivities[]> {
-    let activityPromises: Promise<AthleteWithActivities>[] = [];
+    let activityPromises: Promise<AthleteWithActivities | void>[] = [];
     for (const athlete of athletes) {
-      activityPromises.push(this.populateAthleteActivities(athlete, startUnixTime, endUnixTime));
+      activityPromises.push(
+        this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch(() =>
+          console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`)
+        )
+      );
     }
-    return Promise.all(activityPromises);
+
+    const resultsAndVoids = await Promise.all(activityPromises);
+    const athleteActivities: AthleteWithActivities[] = [];
+    resultsAndVoids.forEach((result) => {
+      if (result) athleteActivities.push(result);
+    });
+
+    return athleteActivities;
   }
 
   private static axiosConfig(authToken?: string): AxiosRequestConfig {
