@@ -1,13 +1,15 @@
 import AsciiTable from "ascii-table";
 import moment from "moment";
-import { StravaEvent, Club, WeeklyResult, ContestantFitcoin } from "./challenge-models";
+import { StravaEvent, Club, WeeklyResult, ContestantFitcoin, Grouping } from "./challenge-models";
 
 export class Format {
   static inProgressClubTop5(clubToFormat: Club): string {
     let formatted = "";
     clubToFormat.events.forEach((event) => {
-      const title = `Top '${event.name}' for '${clubToFormat.name}' so far this week\n`;
-      formatted += `${title}\n${this.codeBlock(this.eventTop5Table(event, "POSSIBLE FITCOIN"))}\n`;
+      if (Format.hasContestants(event.groupings)) {
+        const title = `Top '${event.name}' for '${clubToFormat.name}' so far this week\n`;
+        formatted += `${title}\n${this.codeBlock(this.eventTop5Table(event, "POSSIBLE FITCOIN"))}\n`;
+      }
     });
     return formatted;
   }
@@ -15,10 +17,19 @@ export class Format {
   static finalClubTop5(clubToFormat: Club): string {
     let formatted = "";
     clubToFormat.events.forEach((event) => {
-      const title = `Final top '${event.name}' for '${clubToFormat.name}' last week\n`;
-      formatted += `${title}\n${this.codeBlock(this.eventTop5Table(event, "FITCOIN"))}\n`;
+      if (Format.hasContestants(event.groupings)) {
+        const title = `Final top '${event.name}' for '${clubToFormat.name}' last week\n`;
+        formatted += `${title}\n${this.codeBlock(this.eventTop5Table(event, "FITCOIN"))}\n`;
+      }
     });
     return formatted;
+  }
+
+  static hasContestants(groupings: Grouping[]): boolean {
+    for (const grouping of groupings) {
+      if (grouping.contestants.length > 0) return true;
+    }
+    return false;
   }
 
   static eventTop5Table(eventToFormat: StravaEvent, fitcoinHeading: string): string {
@@ -39,8 +50,8 @@ export class Format {
         const contestant = group.contestants[i];
         if (contestant) {
           anyResult = true;
-          if (group.unit  == "min/km") {
-            const pace = moment.utc(moment.duration(contestant.total, 'minutes').asMilliseconds()).format('m:ss')
+          if (group.unit == "min/km") {
+            const pace = moment.utc(moment.duration(contestant.total, "minutes").asMilliseconds()).format("m:ss");
             row.push(contestant.name, `${pace}${group.unit}`);
           } else {
             row.push(contestant.name, `${contestant.total}${group.unit}`);
