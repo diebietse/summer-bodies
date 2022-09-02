@@ -114,6 +114,8 @@ export class Firestore {
 
 export interface SummerBodiesConfig {
   slackWebhookUrl: string;
+  slackChannelDaily: string;
+  slackChannelWeekly: string;
   stravaBotId: string;
   stravaClientId: string;
   stravaRefreshToken: string;
