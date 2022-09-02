@@ -12,7 +12,7 @@ export class Bot {
     const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
     await Firestore.updateRefreshToken(newToken.refresh_token);
     const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
-    const slack = new Slack(config.slackWebhookUrl);
+    const slack = new Slack(config.slackWebhookUrl, config.slackChannelDaily);
 
     const allActivities = await this.getAllStravaAthletesActivities(strava, getCurrentWeekUnix(), now());
 
@@ -23,7 +23,7 @@ export class Bot {
   static async publishWeeklyResults() {
     const config = await Firestore.getConfig();
     const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
-    const slack = new Slack(config.slackWebhookUrl);
+    const slack = new Slack(config.slackWebhookUrl, config.slackChannelWeekly);
 
     const allActivities = await this.getAllStravaAthletesActivities(strava, getPreviousWeekUnix(), getCurrentWeekUnix());
 
