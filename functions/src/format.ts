@@ -1,6 +1,6 @@
 import AsciiTable from "ascii-table";
 import moment from "moment";
-import { StravaEvent, Club, WeeklyResult, ContestantFitcoin, Grouping } from "./challenge-models";
+import { StravaEvent, Club, WeeklyResult, ContestantFitcoin, Grouping, Athlete } from "./challenge-models";
 
 export class Format {
   static inProgressClubTop5(clubToFormat: Club): string {
@@ -79,6 +79,15 @@ export class Format {
     return table.toString();
   }
 
+  static athleteTable(athletes: Athlete[]): string {
+    const table = new AsciiTable();
+    table.setHeading("NAME", "GROUP");
+    athletes.forEach((athlete) => {
+      table.addRow(`${athlete.firstname} ${athlete.lastname}`, athlete.club);
+    });
+    return table.toString();
+  }
+
   static fitcoinTable(contestants: ContestantFitcoin[]): string {
     const table = new AsciiTable();
     table.setHeading("NAME", "FITCOIN RECEIVED");
@@ -90,6 +99,10 @@ export class Format {
 
   static goalStatus(title: string, weeklyResults: WeeklyResult[]): string {
     return `${title}\n${Format.codeBlock(Format.weeklyGoalTable(weeklyResults))}`;
+  }
+
+  static athletes(title: string, athletes: Athlete[]): string {
+    return `${title}\n${Format.codeBlock(Format.athleteTable(athletes))}`;
   }
 
   static fitcoinStatus(title: string, contestants: ContestantFitcoin[]): string {
