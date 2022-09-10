@@ -3,7 +3,7 @@ export enum GroupingType {
   Duration = "Duration",
   Elevation = "Elevation",
   Attempts = "Attempts",
-  Pace = "Pace"
+  Pace = "Pace",
 }
 
 export enum ActivityType {
