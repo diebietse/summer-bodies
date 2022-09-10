@@ -14,11 +14,13 @@ async function printResults() {
   const config = await Firestore.getConfig();
   const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
   const athletes = await Firestore.getRegisteredAthletes();
-  let athletesWithActivities = await strava.getAllAthletesActivities(
+  const athletesWithActivities = await strava.getAllAthletesActivities(
     athletes,
     getPreviousWeekUnix(),
     getCurrentWeekUnix()
   );
+  // const athletesWithActivities = await strava.getAllAthletesActivities(athletes, getCurrentWeekUnix(), now());
+  // const athletesWithActivities = JSON.parse(readFileSync("athletesWithActivities.json", "utf8"));
 
   let clubs = await Challenge.calculateActivities(athletesWithActivities);
 

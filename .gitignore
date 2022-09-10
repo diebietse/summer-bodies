@@ -67,3 +67,4 @@ node_modules/
 
 /service-account.json
 /.firebaserc
+functions/athletesWithActivities.json
