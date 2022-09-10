@@ -121,26 +121,26 @@ export class Challenge {
     for (let [event, eventActivities] of events) {
       eventResult.push(this.getEventGroupings(eventActivities, event));
     }
-    eventResult.push(this.getMileChallengeGroupings(activities))
+    eventResult.push(this.getMileChallengeGroupings(activities));
     return eventResult.sort(this.compareStravaEvents);
   }
 
   private static getMileChallengeGroupings(activities: OurEvent[]): StravaEvent {
-    const mileEvents = activities.filter(this.isMileEvent)
+    const mileEvents = activities.filter(this.isMileEvent);
 
     let event: StravaEvent = {
       name: ActivityType.MileChallenge,
       groupings: [
         this.getGroupingTotals(mileEvents, GroupingType.Attempts),
-        this.getGroupingTotals(mileEvents, GroupingType.Pace)
-      ]
-    }
+        this.getGroupingTotals(mileEvents, GroupingType.Pace),
+      ],
+    };
 
     return event;
-  } 
+  }
 
   private static isMileEvent(activity: OurEvent): boolean {
-    return activity.type == "Run" && activity.distance > 1500 && activity.distance < 2000
+    return activity.type == "Run" && activity.distance > 1500 && activity.distance < 2000;
   }
 
   private static athletesToOurEvents(athletes: AthleteWithActivities[]): OurEvent[] {
@@ -203,7 +203,7 @@ export class Challenge {
       Duration: "min",
       Elevation: "m",
       Attempts: "",
-      Pace: "min/km"
+      Pace: "min/km",
     };
 
     activities.forEach((activity) => {
@@ -217,9 +217,9 @@ export class Challenge {
       if (type != GroupingType.Pace) {
         contestant.total = contestant.total + this.getGroupingValue(activity, type);
       } else {
-        contestant.total = Math.max(contestant.total, this.getGroupingValue(activity, type))
+        contestant.total = Math.max(contestant.total, this.getGroupingValue(activity, type));
       }
-      
+
       contestants.set(activity.athleteId, contestant);
     });
 
@@ -241,9 +241,9 @@ export class Challenge {
       case GroupingType.Elevation:
         return Math.round(activity.totalElevationGain);
       case GroupingType.Attempts:
-        return 1
+        return 1;
       case GroupingType.Pace:
-        return 1000/(60 * activity.averageSpeed)
+        return 1000 / (60 * activity.averageSpeed);
     }
   }
 
