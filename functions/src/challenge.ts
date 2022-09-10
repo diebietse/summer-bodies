@@ -214,19 +214,26 @@ export class Challenge {
           total: 0,
         };
       }
-      if (type != GroupingType.Pace) {
-        contestant.total = contestant.total + this.getGroupingValue(activity, type);
+      if (type === GroupingType.Pace) {
+        if (contestant.total === 0) {
+          contestant.total = this.getGroupingValue(activity, type);
+        } else {
+          contestant.total = Math.min(contestant.total, this.getGroupingValue(activity, type));
+        }
       } else {
-        contestant.total = Math.max(contestant.total, this.getGroupingValue(activity, type));
+        contestant.total = contestant.total + this.getGroupingValue(activity, type);
       }
 
       contestants.set(activity.athleteId, contestant);
     });
 
     let c = Array.from(contestants, ([_name, value]) => value);
+    c = c.sort(this.compareContestant);
+    if (type === GroupingType.Pace) c = c.reverse();
+
     const grouping: Grouping = {
       name: type,
-      contestants: c.sort(this.compareContestant),
+      contestants: c,
       unit: units[type],
     };
     return grouping;
