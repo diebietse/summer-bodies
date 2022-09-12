@@ -140,7 +140,11 @@ export class Challenge {
   }
 
   private static isMileEvent(activity: OurEvent): boolean {
-    return activity.type == "Run" && activity.distance > 1500 && activity.distance < 2000;
+    return (
+      Challenge.toOurActivity(activity.type) === ActivityType.OnFoot &&
+      activity.distance > 1500 &&
+      activity.distance < 2000
+    );
   }
 
   private static athletesToOurEvents(athletes: AthleteWithActivities[]): OurEvent[] {
