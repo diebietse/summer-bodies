@@ -46,7 +46,7 @@ export interface WeeklyResult {
 
 export interface OurEvent {
   id: string;
-  athleteId: string;
+  athleteId: number;
   type: string;
   distance: number;
   movingTime: number;
@@ -83,7 +83,7 @@ export interface Activity {
 
 // subset of https://developers.strava.com/docs/reference/#api-models-DetailedAthlete
 export interface Athlete {
-  id: string;
+  id: number;
   firstname: string;
   lastname: string;
   profile: string;

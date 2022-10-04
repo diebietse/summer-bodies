@@ -200,7 +200,7 @@ export class Challenge {
   }
 
   private static getGroupingTotals(activities: OurEvent[], type: GroupingType): Grouping {
-    let contestants = new Map<string, Contestant>();
+    let contestants = new Map<number, Contestant>();
 
     const units = {
       Distance: "km",
