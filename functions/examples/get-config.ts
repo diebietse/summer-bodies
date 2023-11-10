@@ -6,7 +6,7 @@ import { Firestore } from "../src/firestore";
 
 async function getConfig() {
   const config = await Firestore.getConfig();
-  console.log(config);
+  console.log(JSON.stringify(config, null, 2));
 }
 
 getConfig();

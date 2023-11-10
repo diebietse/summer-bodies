@@ -13,8 +13,10 @@ async function printAthletes() {
     const clubAthletes = athletes
       .filter((athlete) => athlete.club === club)
       .sort((a, b) => (fullName(a) > fullName(b) ? 1 : -1));
-    console.log(Format.athletes(`Registered Athletes in '${club}'`, clubAthletes));
+    console.log(Format.athletes(`Registered Athletes in '${club}' (${clubAthletes.length})`, clubAthletes));
   });
+
+  console.log(`Total athletes: ${athletes.length}`);
 }
 
 function fullName(athlete: Athlete) {
