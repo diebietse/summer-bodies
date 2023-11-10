@@ -1,8 +1,10 @@
 {
-    "stravaClubs": [ "exampleClub1", "exampleClub2"],
-    "stravaBotId": "strava-bot-id",
-    "stravaRefreshToken": "strava-oauth-refresh-token",
-    "stravaClientSecret": "strava-oauth-client-secrets",
-    "stravaClientId": "strava-oauth-client-id",
-    "slackWebhookUrl": "slack-webhook-URL"
-  }
+  "stravaClubs": ["exampleClub1", "exampleClub2"],
+  "stravaBotId": "strava-bot-id",
+  "stravaRefreshToken": "strava-oauth-refresh-token",
+  "stravaClientSecret": "strava-oauth-client-secrets",
+  "stravaClientId": "strava-oauth-client-id",
+  "slackWebhookUrl": "slack-webhook-URL",
+  "slackChannelDaily": "#summerbodies-stats",
+  "slackChannelWeekly": "#summerbodies"
+}
