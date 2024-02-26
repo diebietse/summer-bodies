@@ -1,6 +1,10 @@
 <template>
   <img alt="Vue logo" src="../assets/logo_dark.png" />
-  <h1>Wellness Program</h1>
+  <h1>
+    Wellness Program<br />
+    <!-- Image from https://developers.strava.com/guidelines/ -->
+    <img alt="Entersekt logo" src="../assets/strava_powered_by_horiz.svg" />
+  </h1>
   <h2>{{ success }}</h2>
 </template>
 

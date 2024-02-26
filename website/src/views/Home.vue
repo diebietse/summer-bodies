@@ -1,7 +1,11 @@
 <template>
   <div class="home">
-    <img alt="Vue logo" src="../assets/logo_dark.png" />
-    <h1>Wellness Program</h1>
+    <img alt="Entersekt logo" src="../assets/logo_dark.png" />
+    <h1>
+      Wellness Program<br />
+      <!-- Image from https://developers.strava.com/guidelines/ -->
+      <img alt="Entersekt logo" src="../assets/strava_powered_by_horiz.svg" />
+    </h1>
     <div class="py-3">
       <div class="form-check">
         <input
@@ -31,9 +35,13 @@
       </div>
     </div>
 
-    <button type="button" @click="login" class="btn btn-lg btn-primary">
-      Register
-    </button>
+    <!-- Image from https://developers.strava.com/guidelines/ -->
+    <img
+      type="button"
+      @click="login"
+      alt="Connect with Strava"
+      src="../assets/strava_login.svg"
+    />
   </div>
 </template>
 
