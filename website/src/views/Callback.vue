@@ -1,5 +1,5 @@
 <template>
-  <img alt="Vue logo" src="../assets/logo_dark.png" />
+  <img alt="Vue logo" src="../assets/entersekt.svg" />
   <h1>
     Wellness Program<br />
     <!-- Image from https://developers.strava.com/guidelines/ -->

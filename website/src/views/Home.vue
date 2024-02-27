@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <img alt="Entersekt logo" src="../assets/logo_dark.png" />
+    <img alt="Entersekt logo" src="../assets/entersekt.svg" />
     <h1>
       Wellness Program<br />
       <!-- Image from https://developers.strava.com/guidelines/ -->
