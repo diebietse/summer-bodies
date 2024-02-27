@@ -27,3 +27,10 @@ npm run lint
 ## Customize configuration
 
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+## Deploy
+
+```bash
+npm run build
+firebase deploy --only hosting
+```
