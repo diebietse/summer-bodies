@@ -1,7 +1,7 @@
 <template>
   <img alt="Vue logo" src="../assets/entersekt.svg" />
   <h1>
-    Wellness Program<br />
+    Enteraktive Challenge<br />
     <!-- Image from https://developers.strava.com/guidelines/ -->
     <img alt="Entersekt logo" src="../assets/strava_powered_by_horiz.svg" />
   </h1>
@@ -33,6 +33,7 @@ export default {
 
     try {
       console.log("posting");
+      this.success = "Please wait while your are being registered...";
       const response = await axios.post(`${firebaseURL}`, { code, group });
       this.success = response.data.message;
     } catch (error) {

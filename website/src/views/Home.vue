@@ -2,7 +2,7 @@
   <div class="home">
     <img alt="Entersekt logo" src="../assets/entersekt.svg" />
     <h1>
-      Wellness Program<br />
+      Enteraktive Challenge<br />
       <!-- Image from https://developers.strava.com/guidelines/ -->
       <img alt="Entersekt logo" src="../assets/strava_powered_by_horiz.svg" />
     </h1>
