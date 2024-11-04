@@ -46,14 +46,15 @@ export class Firestore {
     const docs = await collection.listDocuments();
     let contestants = new Map<string, number>();
     for (const doc of docs) {
-      const athletes = await doc.collection("athletes").listDocuments();
-      for (const athlete of athletes) {
-        const data = (await athlete.get()).data();
-        let total = contestants.get(athlete.id) || 0;
-        total += data?.fitcoin;
-        contestants.set(athlete.id, total);
-      }
+      const athletes = await doc.collection("athletes").get();
+      athletes.forEach((doc) => {
+        const data = doc.data();
+        let total = contestants.get(doc.id) || 0;
+        total += data.fitcoin;
+        contestants.set(doc.id, total);
+      });
     }
+    
     let res: ContestantFitcoin[] = [];
     contestants.forEach((fitcoin, name) => {
       const athlete: ContestantFitcoin = {
@@ -72,12 +73,11 @@ export class Firestore {
 
   static async getRegisteredAthletes(): Promise<Athlete[]> {
     const collection = db.collection("athletes");
-    const athletes = await collection.listDocuments();
+    const athletes = await collection.get();
     let res: Athlete[] = [];
-    for (const athlete of athletes) {
-      const data = (await athlete.get()).data();
-      res.push(data as Athlete);
-    }
+    athletes.forEach((doc) => {
+      res.push(doc.data() as Athlete);
+    });
 
     return res;
   }
