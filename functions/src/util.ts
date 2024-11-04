@@ -31,6 +31,12 @@ export function getPreviousWeekUnix(): number {
   return lastWeek.startOf("isoWeek").unix();
 }
 
+export function weeksAgo(weeksAgo: number): moment.Moment {
+  let now = moment.utc();
+  const lastWeek = now.subtract(weeksAgo, "weeks");
+  return lastWeek.startOf("isoWeek");
+}
+
 // https://stackoverflow.com/a/2450976
 // Fisher–Yates shuffle https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 export function shuffle(array: any[]): any[] {
