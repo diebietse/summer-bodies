@@ -39,7 +39,7 @@ export class Challenge {
     for (let athlete of athletes) {
       const validActivities: Activity[] = [];
       athlete.activities.forEach((activity) => {
-        if (activity.moving_time >= 60 * 30) {
+        if (activity.moving_time >= 60 * 29) {
           validActivities.push(activity);
         }
       });
