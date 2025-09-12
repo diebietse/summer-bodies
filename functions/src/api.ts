@@ -6,7 +6,7 @@ export class Api {
 
   constructor() {
     this.router.post("/athlete", async (req: Request, res: Response) => {
-      const { code, group } = req.body;
+      const { code } = req.body;
       try {
         const config = await Firestore.getConfig();
         const token = await Strava.getTokenFromCode(config.stravaClientId, config.stravaClientSecret, code);
@@ -14,7 +14,7 @@ export class Api {
         if (alreadyRegistered) {
           res.status(200).json({ okay: true, message: "You are already registered" });
         } else {
-          await Firestore.storeAthlete(token, group);
+          await Firestore.storeAthlete(token);
           res.status(200).json({ okay: true, message: "Thank you for registering" });
         }
       } catch (error) {

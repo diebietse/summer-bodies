@@ -1,28 +1,20 @@
 import AsciiTable from "ascii-table";
 import moment from "moment";
-import { StravaEvent, Club, WeeklyResult, ContestantFitcoin, Grouping, Athlete } from "./challenge-models";
+import { StravaEvent, WeeklyResult, ContestantFitcoin, Grouping, Athlete } from "./challenge-models";
 
 export class Format {
-  static inProgressClubTop5(clubToFormat: Club): string {
-    let formatted = "";
-    clubToFormat.events.forEach((event) => {
-      if (Format.hasContestants(event.groupings)) {
-        const title = `Top '${event.name}' for '${clubToFormat.name}' so far this week\n`;
-        formatted += `${title}\n${this.codeBlock(this.eventTop5Table(event, "POSSIBLE FITCOIN"))}\n`;
-      }
-    });
-    return formatted;
+  static inProgressEventTop(event: StravaEvent): string {
+    if (!Format.hasContestants(event.groupings)) return "";
+
+    const title = `Top '${event.name}' so far this week\n`;
+    return `${title}\n${this.codeBlock(this.eventTopTable(event, "POSSIBLE FITCOIN"))}`;
   }
 
-  static finalClubTop5(clubToFormat: Club): string {
-    let formatted = "";
-    clubToFormat.events.forEach((event) => {
-      if (Format.hasContestants(event.groupings)) {
-        const title = `Final top '${event.name}' for '${clubToFormat.name}' last week\n`;
-        formatted += `${title}\n${this.codeBlock(this.eventTop5Table(event, "FITCOIN"))}\n`;
-      }
-    });
-    return formatted;
+  static finalEventTop(event: StravaEvent): string {
+    if (!Format.hasContestants(event.groupings)) return "";
+
+    const title = `Final top '${event.name}' last week\n`;
+    return `${title}\n${this.codeBlock(this.eventTopTable(event, "FITCOIN"))}\n`;
   }
 
   static hasContestants(groupings: Grouping[]): boolean {
@@ -32,7 +24,7 @@ export class Format {
     return false;
   }
 
-  static eventTop5Table(eventToFormat: StravaEvent, fitcoinHeading: string): string {
+  static eventTopTable(eventToFormat: StravaEvent, fitcoinHeading: string): string {
     const headings = ["#"];
     eventToFormat.groupings.forEach((group) => {
       headings.push(group.name, "");
@@ -42,14 +34,15 @@ export class Format {
     const table = new AsciiTable();
     table.setHeading(...headings);
 
-    for (let i = 0; i < 5; i++) {
-      let anyResult = false;
-
-      const row = [`${i + 1}`];
+    const contestantCount = eventToFormat.groupings[0].contestants.length;
+    const fitcoinModifier = contestantCount > 5 ? Math.floor(contestantCount / 5) : 1; // number of people that get each tier of fitcoin
+    let count = 0;
+    let fitcoinAwarded = contestantCount > 5 ? 5 : contestantCount;
+    for (let i = 0; i < contestantCount; i++) {
+      const row = [`${i + 1}`]; // Row number
       eventToFormat.groupings.forEach((group) => {
         const contestant = group.contestants[i];
         if (contestant) {
-          anyResult = true;
           if (group.unit == "min/km") {
             const pace = moment.utc(moment.duration(contestant.total, "minutes").asMilliseconds()).format("m:ss");
             row.push(contestant.name, `${pace}${group.unit}`);
@@ -60,10 +53,11 @@ export class Format {
           row.push("", "");
         }
       });
-      row.push(`${5 - i}`);
-
-      if (!anyResult) break;
+      row.push(`${fitcoinAwarded}`); // Fitcoin number
       table.addRow(...row);
+      count++;
+      if (count % fitcoinModifier == 0) fitcoinAwarded--;
+      if (fitcoinAwarded <= 0) break;
     }
     return table.toString();
   }

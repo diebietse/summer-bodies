@@ -54,7 +54,7 @@ export class Firestore {
         contestants.set(doc.id, total);
       });
     }
-    
+
     let res: ContestantFitcoin[] = [];
     contestants.forEach((fitcoin, name) => {
       const athlete: ContestantFitcoin = {
@@ -89,7 +89,7 @@ export class Firestore {
     });
   }
 
-  static async storeAthlete(data: TokenFromCodeResponse, group?: string) {
+  static async storeAthlete(data: TokenFromCodeResponse) {
     const doc = db.collection("athletes").doc(data.athlete.id.toString());
     const athlete = {
       id: data.athlete.id,
@@ -97,7 +97,7 @@ export class Firestore {
       lastname: data.athlete.lastname,
       profile: data.athlete.profile,
       refreshToken: data.refresh_token,
-      club: group || "Group 1",
+      club: "All",
     };
     await doc.create({ ...athlete });
   }

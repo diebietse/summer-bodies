@@ -4,7 +4,7 @@ import { Slack } from "./slack";
 import { Format } from "./format";
 import { AthleteWithActivities } from "./challenge-models";
 import { Challenge } from "./challenge";
-import { getCurrentWeekUnix, getPreviousWeek, getPreviousWeekUnix, now } from "./util";
+import { getCurrentWeekUnix, getPreviousWeek, getPreviousWeekUnix, now, waitMilliseconds } from "./util";
 
 export class Bot {
   static async publishDailyUpdates() {
@@ -16,7 +16,7 @@ export class Bot {
 
     const allActivities = await this.getAllStravaAthletesActivities(strava, getCurrentWeekUnix(), now());
 
-    await this.publishInProgressTop5s(slack, allActivities);
+    await this.publishInProgressTop(slack, allActivities);
     await this.publishInProgressGoalStatus(slack, allActivities);
   }
 
@@ -31,7 +31,7 @@ export class Bot {
       getCurrentWeekUnix()
     );
 
-    await this.publishFinalTop5s(slack, allActivities);
+    await this.publishFinalTop(slack, allActivities);
     await this.publishFinalGoalStatus(slack, allActivities);
     await this.publishWeeklyFitcoin(slack, allActivities);
     await this.publishTotalFitcoin(slack);
@@ -48,19 +48,26 @@ export class Bot {
     return allActivities;
   }
 
-  private static async publishInProgressTop5s(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {
-    const clubs = await Challenge.calculateActivities(athletesWithActivities);
-
-    for (const club of clubs) {
-      await slack.post(Format.inProgressClubTop5(club));
-    }
+  private static async publishInProgressTop(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {
+    const activities = Challenge.calculateActivitiesAll(athletesWithActivities);
+    activities.events.forEach(async (event) => {
+      const eventTableString = Format.inProgressEventTop(event);
+      if (eventTableString) {
+        await waitMilliseconds(1000);
+        await slack.post(eventTableString);
+      }
+    });
   }
 
-  private static async publishFinalTop5s(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {
-    const clubs = await Challenge.calculateActivities(athletesWithActivities);
-    for (const club of clubs) {
-      await slack.post(Format.finalClubTop5(club));
-    }
+  private static async publishFinalTop(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {
+    const activities = Challenge.calculateActivitiesAll(athletesWithActivities);
+    activities.events.forEach(async (event) => {
+      const eventTableString = Format.finalEventTop(event);
+      if (eventTableString) {
+        await waitMilliseconds(1000);
+        await slack.post(eventTableString);
+      }
+    });
   }
 
   private static async publishWeeklyFitcoin(slack: Slack, athletesWithActivities: AthleteWithActivities[]) {

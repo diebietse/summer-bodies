@@ -14,7 +14,7 @@ import {
 } from "./challenge-models";
 
 export class Challenge {
-  static async calculateActivities(athletes: AthleteWithActivities[]): Promise<Club[]> {
+  static calculateActivitiesAll(athletes: AthleteWithActivities[]): Club {
     const activities = this.athletesToOurEvents(athletes);
     let clubs = new Map<string, OurEvent[]>();
     activities.forEach((activity) => {
@@ -24,14 +24,14 @@ export class Challenge {
     });
 
     let allClubs: Club[] = [];
-    for (let [club, clubActivities] of clubs) {
+    for (let [_, clubActivities] of clubs) {
       let clubResult: Club = {
-        name: club,
+        name: "all",
         events: this.getClubEvents(clubActivities),
       };
       allClubs.push(clubResult);
     }
-    return allClubs.sort(this.compareClubs);
+    return allClubs[0];
   }
 
   static async calculateProgress(athletes: AthleteWithActivities[]): Promise<WeeklyResult[]> {
@@ -58,24 +58,24 @@ export class Challenge {
   }
 
   static async calculateFitcoin(athletes: AthleteWithActivities[]): Promise<ContestantFitcoin[]> {
-    let clubs = await this.calculateActivities(athletes);
+    let club = this.calculateActivitiesAll(athletes);
     let fitcoinTotals = new Map<string, number>();
 
-    clubs.forEach((club) => {
-      club.events.forEach((event) => {
-        event.groupings.forEach((grouping) => {
-          let fitcoinAwarded: number = 5;
-          for (let contestant of grouping.contestants) {
-            console.log(`${club.name}/${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`);
-            let total = fitcoinTotals.get(contestant.name) || 0;
-            total += fitcoinAwarded;
-            fitcoinTotals.set(contestant.name, total);
-            fitcoinAwarded--;
-            if (fitcoinAwarded <= 0) {
-              break;
-            }
-          }
-        });
+    club.events.forEach((event) => {
+      event.groupings.forEach((grouping) => {
+        const contestantCount = grouping.contestants.length;
+        const fitcoinModifier = contestantCount > 5 ? Math.floor(contestantCount / 5) : 1; // number of people that get each tier of fitcoin
+        let count = 0;
+        let fitcoinAwarded = contestantCount > 5 ? 5 : contestantCount;
+        for (let contestant of grouping.contestants) {
+          console.log(`${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`);
+          let total = fitcoinTotals.get(contestant.name) || 0;
+          total += fitcoinAwarded;
+          fitcoinTotals.set(contestant.name, total);
+          count++;
+          if (count % fitcoinModifier == 0) fitcoinAwarded--;
+          if (fitcoinAwarded <= 0) break;
+        }
       });
     });
 
@@ -259,12 +259,6 @@ export class Challenge {
   }
 
   private static compareStravaEvents(a: StravaEvent, b: StravaEvent) {
-    if (a.name > b.name) return 1;
-    if (a.name < b.name) return -1;
-    return 0;
-  }
-
-  private static compareClubs(a: Club, b: Club) {
     if (a.name > b.name) return 1;
     if (a.name < b.name) return -1;
     return 0;

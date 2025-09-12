@@ -1,21 +1,30 @@
 import * as functions from "firebase-functions";
+
+import { onSchedule } from "firebase-functions/v2/scheduler";
+
 import { Bot } from "./bot";
 import express from "express";
 import { Server } from "./server";
 
-export const weekDaily0900 = functions.pubsub
-  .schedule("0 9 * * *")
-  .timeZone("Africa/Johannesburg")
-  .onRun(async (_context) => {
+export const weekDaily0900 = onSchedule(
+  {
+    schedule: "0 9 * * *",
+    timeZone: "Africa/Johannesburg",
+  },
+  async () => {
     await Bot.publishDailyUpdates();
-  });
+  }
+);
 
-export const monday0930 = functions.pubsub
-  .schedule("30 9 * * 1")
-  .timeZone("Africa/Johannesburg")
-  .onRun(async (_context) => {
+export const monday0930 = onSchedule(
+  {
+    schedule: "30 9 * * 1",
+    timeZone: "Africa/Johannesburg",
+  },
+  async () => {
     await Bot.publishWeeklyResults();
-  });
+  }
+);
 
 const server = new Server();
 const expressServer = express();
