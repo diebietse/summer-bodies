@@ -62,11 +62,13 @@ export class Challenge {
     let fitcoinTotals = new Map<string, number>();
 
     club.events.forEach((event) => {
+      const maxFitcoin = event.name == ActivityType.Other? 10: 5
+
       event.groupings.forEach((grouping) => {
         const contestantCount = grouping.contestants.length;
-        const fitcoinModifier = contestantCount > 5 ? Math.floor(contestantCount / 5) : 1; // number of people that get each tier of fitcoin
+        const fitcoinModifier = contestantCount > maxFitcoin ? Math.floor(contestantCount / maxFitcoin) : 1; // number of people that get each tier of fitcoin
         let count = 0;
-        let fitcoinAwarded = contestantCount > 5 ? 5 : contestantCount;
+        let fitcoinAwarded = contestantCount > maxFitcoin ? maxFitcoin : contestantCount;
         for (let contestant of grouping.contestants) {
           console.log(`${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`);
           let total = fitcoinTotals.get(contestant.name) || 0;

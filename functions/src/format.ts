@@ -1,6 +1,6 @@
 import AsciiTable from "ascii-table";
 import moment from "moment";
-import { StravaEvent, WeeklyResult, ContestantFitcoin, Grouping, Athlete } from "./challenge-models";
+import { StravaEvent, WeeklyResult, ContestantFitcoin, Grouping, Athlete, ActivityType } from "./challenge-models";
 
 export class Format {
   static inProgressEventTop(event: StravaEvent): string {
@@ -25,6 +25,8 @@ export class Format {
   }
 
   static eventTopTable(eventToFormat: StravaEvent, fitcoinHeading: string): string {
+    const maxFitcoin = eventToFormat.name == ActivityType.Other ? 10 : 5;
+
     const headings = ["#"];
     eventToFormat.groupings.forEach((group) => {
       headings.push(group.name, "");
@@ -35,9 +37,9 @@ export class Format {
     table.setHeading(...headings);
 
     const contestantCount = eventToFormat.groupings[0].contestants.length;
-    const fitcoinModifier = contestantCount > 5 ? Math.floor(contestantCount / 5) : 1; // number of people that get each tier of fitcoin
+    const fitcoinModifier = contestantCount > maxFitcoin ? Math.floor(contestantCount / maxFitcoin) : 1; // number of people that get each tier of fitcoin
     let count = 0;
-    let fitcoinAwarded = contestantCount > 5 ? 5 : contestantCount;
+    let fitcoinAwarded = contestantCount > maxFitcoin ? maxFitcoin : contestantCount;
     for (let i = 0; i < contestantCount; i++) {
       const row = [`${i + 1}`]; // Row number
       eventToFormat.groupings.forEach((group) => {
