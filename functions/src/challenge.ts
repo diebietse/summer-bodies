@@ -39,6 +39,9 @@ export class Challenge {
     for (let athlete of athletes) {
       const validActivities: Activity[] = [];
       athlete.activities.forEach((activity) => {
+        if (Challenge.toOurActivity(activity.type) == ActivityType.Other) {
+          activity.moving_time = activity.elapsed_time;
+        }
         if (activity.moving_time >= 60 * 29) {
           validActivities.push(activity);
         }
@@ -62,7 +65,7 @@ export class Challenge {
     let fitcoinTotals = new Map<string, number>();
 
     club.events.forEach((event) => {
-      const maxFitcoin = event.name == ActivityType.Other? 10: 5
+      const maxFitcoin = event.name == ActivityType.Other ? 10 : 5;
 
       event.groupings.forEach((grouping) => {
         const contestantCount = grouping.contestants.length;
@@ -166,6 +169,9 @@ export class Challenge {
           type: activity.type.toString(),
           club: athlete.club,
         };
+        if (Challenge.toOurActivity(event.type) == ActivityType.Other) {
+          event.movingTime = activity.elapsed_time;
+        }
         events.push(event);
       }
     }
