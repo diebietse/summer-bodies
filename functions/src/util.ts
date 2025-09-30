@@ -9,14 +9,21 @@ export function now(): number {
   return now.unix();
 }
 
+export function nowPretty(): string {
+  let now = moment.utc();
+  return now.format("YYYY-MM-DD");
+}
+
+export function lastWeekPretty(): string {
+  let now = moment.utc();
+  return `${now.clone().subtract(7, "days").startOf("isoWeek").format("YYYY-MM-DD")} - ${now
+    .startOf("isoWeek")
+    .format("YYYY-MM-DD")}`;
+}
+
 export function getCurrentWeek(): Date {
   let now = moment.utc();
   return now.startOf("isoWeek").toDate();
-}
-
-export function getCurrentWeekUnix(): number {
-  let now = moment.utc();
-  return now.startOf("isoWeek").unix();
 }
 
 export function getPreviousWeek(): Date {
@@ -25,16 +32,28 @@ export function getPreviousWeek(): Date {
   return lastWeek.startOf("isoWeek").toDate();
 }
 
-export function getPreviousWeekUnix(): number {
-  let now = moment.utc();
-  const lastWeek = now.subtract(7, "days");
-  return lastWeek.startOf("isoWeek").unix();
-}
-
 export function weeksAgo(weeksAgo: number): moment.Moment {
   let now = moment.utc();
   const lastWeek = now.subtract(weeksAgo, "weeks");
   return lastWeek.startOf("isoWeek");
+}
+
+export function weeksAgoUnix(weeksAgo: number): number {
+  let now = moment.utc();
+  const lastWeek = now.subtract(weeksAgo, "weeks");
+  return lastWeek.startOf("isoWeek").unix();
+}
+
+export function previousWeekUnix(): number {
+  return weeksAgoUnix(1);
+}
+
+export function currentWeekUnix(): number {
+  return weeksAgoUnix(0);
+}
+
+export function nextWeekUnix(): number {
+  return weeksAgoUnix(-1);
 }
 
 // https://stackoverflow.com/a/2450976

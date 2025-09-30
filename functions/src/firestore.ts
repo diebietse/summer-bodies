@@ -110,6 +110,19 @@ export class Firestore {
       });
     }
   }
+
+  static async storeResults(id: string, results: string): Promise<void> {
+    await db.collection("results").doc(id).set({ result: results });
+  }
+
+  static async getResults(id: string): Promise<string | null> {
+    const doc = await db.collection("results").doc(id).get();
+    if (doc.exists) {
+      const data = doc.data();
+      return data?.result || null;
+    }
+    return null;
+  }
 }
 
 export interface SummerBodiesConfig {

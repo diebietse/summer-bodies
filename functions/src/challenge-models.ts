@@ -13,13 +13,8 @@ export enum ActivityType {
   Other = "Other",
 }
 
-export interface Club {
-  name: string;
-  events: StravaEvent[];
-}
-
 // Cycle, Run, Other
-export interface StravaEvent {
+export interface ChallengeEvent {
   name: ActivityType;
   groupings: Grouping[];
 }
@@ -34,14 +29,24 @@ export interface Grouping {
 export interface Contestant {
   name: string;
   total: number;
+  fitcoin?: number;
 }
 
-export interface WeeklyResult {
+export interface GoalResult {
   name: string;
   achieved: boolean;
   activities: number;
   totalTimeMin: number;
   goal: number;
+  fitcoin: number;
+}
+
+export interface ChallengeResults {
+  topResults: ChallengeEvent[];
+  goalResults: GoalResult[];
+  startDate?: number;
+  endDate?: number;
+  currentTime?: number;
 }
 
 export interface OurEvent {
@@ -75,7 +80,7 @@ export interface Activity {
   name: string;
   distance: number;
   moving_time: number;
-  elapsed_time: number
+  elapsed_time: number;
   total_elevation_gain: number;
   average_speed: number;
   type: StravaActivityType;

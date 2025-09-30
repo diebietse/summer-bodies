@@ -22,6 +22,25 @@ export class Api {
         res.status(400).json({ error: message });
       }
     });
+
+    this.router.get("/results/:id", async (req: Request, res: Response) => {
+      try {
+        const { id } = req.params;
+        const results = await Firestore.getResults(id);
+
+        if (results === null) {
+          res.status(404).json({ error: "Results not found" });
+          return;
+        }
+
+        // Parse the JSON string and return the parsed results
+        const parsedResults = JSON.parse(results);
+        res.status(200).json(parsedResults);
+      } catch (error) {
+        const message = (error as { message: string }).message;
+        res.status(400).json({ error: message || "Failed to retrieve results" });
+      }
+    });
   }
 
   public server(): Router {
