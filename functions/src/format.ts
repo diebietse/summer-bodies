@@ -1,16 +1,16 @@
 import AsciiTable from "ascii-table";
 import moment from "moment";
-import { StravaEvent, WeeklyResult, ContestantFitcoin, Grouping, Athlete, ActivityType } from "./challenge-models";
+import { ChallengeEvent, GoalResult, ContestantFitcoin, Grouping, Athlete } from "./challenge-models";
 
 export class Format {
-  static inProgressEventTop(event: StravaEvent): string {
+  static inProgressEventTop(event: ChallengeEvent): string {
     if (!Format.hasContestants(event.groupings)) return "";
 
     const title = `Top '${event.name}' so far this week\n`;
     return `${title}\n${this.codeBlock(this.eventTopTable(event, "POSSIBLE FITCOIN"))}`;
   }
 
-  static finalEventTop(event: StravaEvent): string {
+  static finalEventTop(event: ChallengeEvent): string {
     if (!Format.hasContestants(event.groupings)) return "";
 
     const title = `Final top '${event.name}' last week\n`;
@@ -24,9 +24,7 @@ export class Format {
     return false;
   }
 
-  static eventTopTable(eventToFormat: StravaEvent, fitcoinHeading: string): string {
-    const maxFitcoin = eventToFormat.name == ActivityType.Other ? 10 : 5;
-
+  static eventTopTable(eventToFormat: ChallengeEvent, fitcoinHeading: string): string {
     const headings = ["#"];
     eventToFormat.groupings.forEach((group) => {
       headings.push(group.name, "");
@@ -37,10 +35,8 @@ export class Format {
     table.setHeading(...headings);
 
     const contestantCount = eventToFormat.groupings[0].contestants.length;
-    const fitcoinModifier = contestantCount > maxFitcoin ? Math.floor(contestantCount / maxFitcoin) : 1; // number of people that get each tier of fitcoin
-    let count = 0;
-    let fitcoinAwarded = contestantCount > maxFitcoin ? maxFitcoin : contestantCount;
     for (let i = 0; i < contestantCount; i++) {
+      const fitcoinAwarded = eventToFormat.groupings[0].contestants[i].fitcoin
       const row = [`${i + 1}`]; // Row number
       eventToFormat.groupings.forEach((group) => {
         const contestant = group.contestants[i];
@@ -57,14 +53,11 @@ export class Format {
       });
       row.push(`${fitcoinAwarded}`); // Fitcoin number
       table.addRow(...row);
-      count++;
-      if (count % fitcoinModifier == 0) fitcoinAwarded--;
-      if (fitcoinAwarded <= 0) break;
     }
     return table.toString();
   }
 
-  static weeklyGoalTable(weeklyResults: WeeklyResult[]): string {
+  static weeklyGoalTable(weeklyResults: GoalResult[]): string {
     const table = new AsciiTable();
     table.setHeading("NAME", "TOTAL QUALIFYING TIME", "WEEKLY GOAL");
     weeklyResults.forEach((weeklyResult) => {
@@ -93,7 +86,7 @@ export class Format {
     return table.toString();
   }
 
-  static goalStatus(title: string, weeklyResults: WeeklyResult[]): string {
+  static goalStatus(title: string, weeklyResults: GoalResult[]): string {
     return `${title}\n${Format.codeBlock(Format.weeklyGoalTable(weeklyResults))}`;
   }
 
@@ -105,7 +98,7 @@ export class Format {
     return `${title}\n${Format.codeBlock(Format.fitcoinTable(contestants))}`;
   }
 
-  static activityCount(weeklyResult: WeeklyResult): string {
+  static activityCount(weeklyResult: GoalResult): string {
     return `${weeklyResult.achieved ? "✓" : "✘"} ${weeklyResult.activities}/${weeklyResult.goal}`;
   }
 

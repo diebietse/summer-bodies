@@ -9,7 +9,7 @@
     "target": "es2017",
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "typeRoots": ["./node_modules/@types", "src/@types"]
+    "typeRoots": ["./node_modules/@types", "src/@types"],
   },
   "compileOnSave": true,
   "include": ["src"]
