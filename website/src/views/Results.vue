@@ -202,6 +202,10 @@ export default {
       const options = {
         month: "short",
         day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "UTC",
+        timeZoneName: "short",
       };
       return currentDate.toLocaleDateString(undefined, options);
     },
