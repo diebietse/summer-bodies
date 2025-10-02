@@ -4,6 +4,8 @@ import { Slack } from "./slack";
 import { Format } from "./format";
 import { AthleteWithActivities, ChallengeResults } from "./challenge-models";
 import { Challenge } from "./challenge";
+import { Puppeteer } from "./puppeteer";
+import { uploadPngToStorage } from "./firebase-storage";
 import {
   currentWeekUnix,
   getPreviousWeek,
@@ -31,15 +33,20 @@ export class Bot {
 
     const id = crypto.randomUUID();
 
-    // await this.publishInProgressTop(slack, results.topResults);
-    // await this.publishInProgressGoalStatus(slack, results.goalResults);
-
     results.startDate = currentWeek;
     results.endDate = nextWeek;
     results.currentTime = timeNow;
     await Firestore.storeResults(id, JSON.stringify(results));
 
-    await this.publishInProgress(slack, id);
+    const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
+    const screenshot = await Puppeteer.screenshot(resultsUrl);
+
+    // Upload screenshot to Firebase Storage
+    const screenshotFileName = `daily-update-${id}`;
+    const screenshotUrl = await uploadPngToStorage(screenshot, screenshotFileName);
+    console.log(`Screenshot uploaded to: ${screenshotUrl}`);
+
+    await this.publishInProgress(slack, resultsUrl, screenshotUrl);
   }
 
   static async publishWeeklyResults() {
@@ -53,8 +60,6 @@ export class Bot {
     const allActivities = await this.getAllStravaAthletesActivities(strava, previousWeek, currentWeek);
     const results = Challenge.calculateResults(allActivities);
 
-    // await this.publishFinalTop(slack, results.topResults);
-    // await this.publishFinalGoalStatus(slack, results.goalResults);
     const id = crypto.randomUUID();
 
     results.startDate = previousWeek;
@@ -62,7 +67,15 @@ export class Bot {
     results.currentTime = timeNow;
     await Firestore.storeResults(id, JSON.stringify(results));
 
-    await this.publishFinal(slack, id);
+    const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
+    const screenshot = await Puppeteer.screenshot(resultsUrl);
+
+    // Upload screenshot to Firebase Storage
+    const screenshotFileName = `weekly-results-${id}`;
+    const screenshotUrl = await uploadPngToStorage(screenshot, screenshotFileName);
+    console.log(`Screenshot uploaded to: ${screenshotUrl}`);
+
+    await this.publishFinal(slack, resultsUrl, screenshotUrl);
     await this.publishWeeklyFitcoin(slack, results);
     await this.publishTotalFitcoin(slack);
   }
@@ -78,32 +91,20 @@ export class Bot {
     return allActivities;
   }
 
-  private static async publishInProgress(slack: Slack, id: string) {
-    await slack.post(`In progress results on ${nowPretty()}: https://summer-bodies.web.app/results/${id}`);
+  private static async publishInProgress(slack: Slack, resultsUrl: string, screenshotUrl: string) {
+    await slack.postResults(
+      `New in progress results for ${nowPretty()}!\nSee the screenshot below`,
+      screenshotUrl,
+      resultsUrl
+    );
   }
 
-  // private static async publishInProgressTop(slack: Slack, topResults: ChallengeEvent[]) {
-  //   topResults.forEach(async (event) => {
-  //     const eventTableString = Format.inProgressEventTop(event);
-  //     if (eventTableString) {
-  //       await waitMilliseconds(1000);
-  //       await slack.post(eventTableString);
-  //     }
-  //   });
-  // }
-
-  // private static async publishFinalTop(slack: Slack, topResults: ChallengeEvent[]) {
-  //   topResults.forEach(async (event) => {
-  //     const eventTableString = Format.finalEventTop(event);
-  //     if (eventTableString) {
-  //       await waitMilliseconds(1000);
-  //       await slack.post(eventTableString);
-  //     }
-  //   });
-  // }
-
-  private static async publishFinal(slack: Slack, id: string) {
-    await slack.post(`Final results for ${lastWeekPretty()}: https://summer-bodies.web.app/results/${id}`);
+  private static async publishFinal(slack: Slack, resultsUrl: string, screenshotUrl: string) {
+    await slack.postResults(
+      `The final results for ${lastWeekPretty()} are out!\nSee the screenshot below`,
+      screenshotUrl,
+      resultsUrl
+    );
   }
 
   private static async publishWeeklyFitcoin(slack: Slack, results: ChallengeResults) {
@@ -117,12 +118,4 @@ export class Bot {
     const totalFitcoin = await Firestore.getFitcoinTotals();
     await slack.post(Format.fitcoinStatus("Total Fitcoin Results", totalFitcoin));
   }
-
-  // private static async publishInProgressGoalStatus(slack: Slack, goalResult: GoalResult[]) {
-  //   await slack.post(Format.goalStatus("In Progress Goal Status", goalResult));
-  // }
-
-  // private static async publishFinalGoalStatus(slack: Slack, goalResult: GoalResult[]) {
-  //   await slack.post(Format.goalStatus("Last Week's Goal Results", goalResult));
-  // }
 }
