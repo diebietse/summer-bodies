@@ -3,3 +3,8 @@
 **/*.js.map
 
 node_modules/
+
+athletesWithActivities*.json
+calculate*.json
+screenshot.png
+example.png

@@ -11,7 +11,7 @@ export function now(): number {
 
 export function nowPretty(): string {
   let now = moment.utc();
-  return now.format("YYYY-MM-DD");
+  return `${now.format("YYYY-MM-DD HH:mm:ss")} UTC`;
 }
 
 export function lastWeekPretty(): string {
