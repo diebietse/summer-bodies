@@ -55,8 +55,8 @@ export interface OurEvent {
   type: string;
   distanceM: number;
   movingTimeS: number;
+  elapsedTimeS: number;
   totalElevationGainM: number;
-  averageSpeed: number;
   firstName: string;
   lastName: string;
   club: string;

@@ -276,8 +276,8 @@ export class Challenge {
         return Math.round(activity.totalElevationGainM);
       case GroupingType.Attempts:
         return 1;
-      case GroupingType.Pace:
-        return 1000 / (60 * activity.averageSpeed);
+      case GroupingType.Pace: // In min/km
+        return activity.elapsedTimeS / 60 / (activity.distanceM / 1000);
     }
   }
 
