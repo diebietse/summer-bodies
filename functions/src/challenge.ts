@@ -163,9 +163,7 @@ export class Challenge {
 
   private static isMileEvent(activity: OurEvent): boolean {
     return (
-      Challenge.toOurActivity(activity.type) === ActivityType.OnFoot &&
-      activity.distance > 1500 &&
-      activity.distance < 2000
+      Challenge.toOurActivity(activity.type) === ActivityType.OnFoot && activity.distanceM > 1500 && activity.distanceM < 2000
     );
   }
 
@@ -178,16 +176,16 @@ export class Challenge {
           firstName: athlete.firstname,
           lastName: athlete.lastname,
           id: activity.id.toString(),
-          distance: activity.distance,
-          movingTime: activity.moving_time,
-          totalElevationGain: activity.total_elevation_gain,
-          averageSpeed: activity.average_speed,
+          distanceM: activity.distance,
+          movingTimeS: activity.moving_time,
+          elapsedTimeS: activity.elapsed_time,
+          totalElevationGainM: activity.total_elevation_gain,
           eventName: activity.name,
           type: activity.type.toString(),
           club: athlete.club,
         };
         if (Challenge.toOurActivity(event.type) == ActivityType.Other) {
-          event.movingTime = activity.elapsed_time;
+          event.movingTimeS = activity.elapsed_time;
         }
         events.push(event);
       }
@@ -271,11 +269,11 @@ export class Challenge {
   private static getGroupingValue(activity: OurEvent, type: GroupingType): number {
     switch (type) {
       case GroupingType.Distance:
-        return Math.round(activity.distance / 1000);
+        return Math.round(activity.distanceM / 1000);
       case GroupingType.Duration:
-        return Math.round(activity.movingTime / 60);
+        return Math.round(activity.movingTimeS / 60);
       case GroupingType.Elevation:
-        return Math.round(activity.totalElevationGain);
+        return Math.round(activity.totalElevationGainM);
       case GroupingType.Attempts:
         return 1;
       case GroupingType.Pace:
