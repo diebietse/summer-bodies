@@ -25,7 +25,7 @@
 
     <!-- Main content - only show when not loading and no error -->
     <div v-if="!loading && !error && results">
-      <div class="nav-tabs-container">
+      <div v-if="!screenshot" class="nav-tabs-container">
         <ul class="nav nav-tabs justify-content-center" role="tablist">
           <li class="nav-item" role="presentation">
             <button class="nav-link" :class="{ active: activeTab === 'challenges' }" @click="activeTab = 'challenges'" type="button">Challenge Results</button>
@@ -189,6 +189,7 @@ export default {
       error: null,
       activeTab: "challenges",
       goalFilter: "all",
+      screenshot: false,
     };
   },
   computed: {
@@ -293,6 +294,10 @@ export default {
       this.error = "No results ID provided in the URL.";
       this.loading = false;
       return;
+    }
+
+    if (this.$route.query.screenshot) {
+      this.screenshot = true;
     }
 
     try {

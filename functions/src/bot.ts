@@ -39,7 +39,7 @@ export class Bot {
     await Firestore.storeResults(id, JSON.stringify(results));
 
     const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
-    const screenshot = await Puppeteer.screenshot(resultsUrl);
+    const screenshot = await Puppeteer.screenshot(`${resultsUrl}?screenshot=true`);
 
     // Upload screenshot to Firebase Storage
     const screenshotFileName = `daily-update-${id}`;
@@ -68,7 +68,7 @@ export class Bot {
     await Firestore.storeResults(id, JSON.stringify(results));
 
     const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
-    const screenshot = await Puppeteer.screenshot(resultsUrl);
+    const screenshot = await Puppeteer.screenshot(`${resultsUrl}?screenshot=true`);
 
     // Upload screenshot to Firebase Storage
     const screenshotFileName = `weekly-results-${id}`;
