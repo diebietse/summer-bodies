@@ -58,7 +58,7 @@ export class Challenge {
     return { topResults: topResults, goalResults: goalResults };
   }
 
-  private static calculateGoalResults(athletes: AthleteWithActivities[], fitcoinAwarded: number): GoalResult[] {
+  static calculateGoalResults(athletes: AthleteWithActivities[], fitcoinAwarded: number): GoalResult[] {
     let weekResults: GoalResult[] = [];
     for (let athlete of athletes) {
       const validActivities: Activity[] = [];
@@ -152,19 +152,14 @@ export class Challenge {
 
     let event: ChallengeEvent = {
       name: ActivityType.MileChallenge,
-      groupings: [
-        this.getGroupingTotals(mileEvents, GroupingType.Attempts),
-        this.getGroupingTotals(mileEvents, GroupingType.Pace),
-      ],
+      groupings: [this.getGroupingTotals(mileEvents, GroupingType.Attempts), this.getGroupingTotals(mileEvents, GroupingType.Pace)],
     };
 
     return event;
   }
 
   private static isMileEvent(activity: OurEvent): boolean {
-    return (
-      Challenge.toOurActivity(activity.type) === ActivityType.OnFoot && activity.distanceM > 1500 && activity.distanceM < 2000
-    );
+    return Challenge.toOurActivity(activity.type) === ActivityType.OnFoot && activity.distanceM > 1500 && activity.distanceM < 2000;
   }
 
   private static athletesToOurEvents(athletes: AthleteWithActivities[]): OurEvent[] {

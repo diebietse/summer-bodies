@@ -24,9 +24,7 @@ export class Strava {
 
   async getAthleteActivities(accessToken: string, startUnixTime: number, endUnixTime: number): Promise<Activity[]> {
     const client = axios.create(Strava.axiosConfig(accessToken));
-    const result = await client.get<Activity[]>(
-      `/athlete/activities?after=${startUnixTime}&before=${endUnixTime}&per_page=${ACTIVITIES_PER_PAGE}`
-    );
+    const result = await client.get<Activity[]>(`/athlete/activities?after=${startUnixTime}&before=${endUnixTime}&per_page=${ACTIVITIES_PER_PAGE}`);
     return result.data;
   }
 
@@ -43,11 +41,7 @@ export class Strava {
     return result.data;
   }
 
-  async populateAthleteActivities(
-    athlete: Athlete,
-    startUnixTime: number,
-    endUnixTime: number
-  ): Promise<AthleteWithActivities> {
+  async populateAthleteActivities(athlete: Athlete, startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities> {
     const token = await Strava.getToken(this.clientId, this.clientSecret, athlete.refreshToken);
     athlete.refreshToken = token.refresh_token;
     const activities = await this.getAthleteActivities(token.access_token, startUnixTime, endUnixTime);
@@ -57,11 +51,7 @@ export class Strava {
     };
   }
 
-  async getAllAthletesActivities(
-    athletes: Athlete[],
-    startUnixTime: number,
-    endUnixTime: number
-  ): Promise<AthleteWithActivities[]> {
+  async getAllAthletesActivities(athletes: Athlete[], startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities[]> {
     let activityPromises: Promise<AthleteWithActivities | void>[] = [];
     for (const athlete of athletes) {
       activityPromises.push(

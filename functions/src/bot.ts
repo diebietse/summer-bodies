@@ -6,15 +6,7 @@ import { AthleteWithActivities, ChallengeResults } from "./challenge-models";
 import { Challenge } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
-import {
-  currentWeekUnix,
-  getPreviousWeek,
-  previousWeekUnix,
-  now,
-  nextWeekUnix,
-  nowPretty,
-  lastWeekPretty,
-} from "./util";
+import { currentWeekUnix, getPreviousWeek, previousWeekUnix, now, nextWeekUnix, nowPretty, lastWeekPretty } from "./util";
 import crypto from "crypto";
 
 export class Bot {
@@ -80,11 +72,7 @@ export class Bot {
     await this.publishTotalFitcoin(slack);
   }
 
-  private static async getAllStravaAthletesActivities(
-    strava: Strava,
-    startUnixTime: number,
-    endUnixTime: number
-  ): Promise<AthleteWithActivities[]> {
+  private static async getAllStravaAthletesActivities(strava: Strava, startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities[]> {
     const athletes = await Firestore.getRegisteredAthletes();
     const allActivities = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
     Firestore.updateAthletesRefreshToken(allActivities);
@@ -92,19 +80,11 @@ export class Bot {
   }
 
   private static async publishInProgress(slack: Slack, resultsUrl: string, screenshotUrl: string) {
-    await slack.postResults(
-      `New in progress results for ${nowPretty()}!\nSee the screenshot below`,
-      screenshotUrl,
-      resultsUrl
-    );
+    await slack.postResults(`New in progress results for ${nowPretty()}!\nSee the screenshot below`, screenshotUrl, resultsUrl);
   }
 
   private static async publishFinal(slack: Slack, resultsUrl: string, screenshotUrl: string) {
-    await slack.postResults(
-      `The final results for ${lastWeekPretty()} are out!\nSee the screenshot below`,
-      screenshotUrl,
-      resultsUrl
-    );
+    await slack.postResults(`The final results for ${lastWeekPretty()} are out!\nSee the screenshot below`, screenshotUrl, resultsUrl);
   }
 
   private static async publishWeeklyFitcoin(slack: Slack, results: ChallengeResults) {

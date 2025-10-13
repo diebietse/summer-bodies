@@ -16,9 +16,7 @@ export function nowPretty(): string {
 
 export function lastWeekPretty(): string {
   let now = moment.utc();
-  return `${now.clone().subtract(7, "days").startOf("isoWeek").format("YYYY-MM-DD")} - ${now
-    .startOf("isoWeek")
-    .format("YYYY-MM-DD")}`;
+  return `${now.clone().subtract(7, "days").startOf("isoWeek").format("YYYY-MM-DD")} - ${now.startOf("isoWeek").format("YYYY-MM-DD")}`;
 }
 
 export function getCurrentWeek(): Date {

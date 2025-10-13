@@ -36,7 +36,7 @@ export class Format {
 
     const contestantCount = eventToFormat.groupings[0].contestants.length;
     for (let i = 0; i < contestantCount; i++) {
-      const fitcoinAwarded = eventToFormat.groupings[0].contestants[i].fitcoin
+      const fitcoinAwarded = eventToFormat.groupings[0].contestants[i].fitcoin;
       const row = [`${i + 1}`]; // Row number
       eventToFormat.groupings.forEach((group) => {
         const contestant = group.contestants[i];
