@@ -15,6 +15,9 @@ export class Puppeteer {
         "--single-process",
         "--disable-gpu",
         "--disable-webgl",
+        // Sometimes getting "Error: Timed out after 30000 ms while waiting for the WS endpoint URL to appear in stdout!"
+        // https://github.com/nodejs/help/issues/3220#issuecomment-1228342313
+        "--remote-debugging-port=9222",
       ],
     });
 
