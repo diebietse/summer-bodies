@@ -36,9 +36,11 @@ export class Firestore {
 
   static async storeFitcoin(fitcoinsContestants: ContestantFitcoin[], date: Date): Promise<void> {
     const collection = db.collection("fitcoin").doc(date.toDateString()).collection("athletes");
+    const promises: Promise<any>[] = [];
     fitcoinsContestants.forEach((contestant) => {
-      collection.doc(contestant.name).set({ fitcoin: contestant.fitcoin });
+      promises.push(collection.doc(contestant.name).set({ fitcoin: contestant.fitcoin }));
     });
+    await Promise.all(promises);
   }
 
   static async getFitcoinTotals(): Promise<ContestantFitcoin[]> {
