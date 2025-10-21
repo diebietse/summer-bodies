@@ -1,5 +1,5 @@
 import { Firestore } from "./firestore";
-import { Strava } from "./strava";
+import { GetAllAthletesActivitiesResult, Strava } from "./strava";
 import { Slack } from "./slack";
 import { Format } from "./format";
 import { AthleteWithActivities, ChallengeResults } from "./challenge-models";
@@ -21,8 +21,13 @@ export class Bot {
     const timeNow = now();
     const nextWeek = nextWeekUnix();
     const allActivities = await this.getAllStravaAthletesActivities(strava, currentWeek, timeNow);
-    const results = Challenge.calculateResults(allActivities);
 
+    if (allActivities.error) {
+      await slack.post(`Error: Could not get all athletes' activities, will try again later`);
+      return;
+    }
+
+    const results = Challenge.calculateResults(allActivities.athletesWithActivities);
     const id = crypto.randomUUID();
 
     results.startDate = currentWeek;
@@ -50,8 +55,13 @@ export class Bot {
     const currentWeek = currentWeekUnix();
     const timeNow = now();
     const allActivities = await this.getAllStravaAthletesActivities(strava, previousWeek, currentWeek);
-    const results = Challenge.calculateResults(allActivities);
 
+    if (allActivities.error) {
+      await slack.post(`Error: Could not get all athletes' activities, will try again later`);
+      return;
+    }
+
+    const results = Challenge.calculateResults(allActivities.athletesWithActivities);
     const id = crypto.randomUUID();
 
     results.startDate = previousWeek;
@@ -72,11 +82,15 @@ export class Bot {
     await this.publishTotalFitcoin(slack);
   }
 
-  private static async getAllStravaAthletesActivities(strava: Strava, startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities[]> {
+  private static async getAllStravaAthletesActivities(
+    strava: Strava,
+    startUnixTime: number,
+    endUnixTime: number
+  ): Promise<GetAllAthletesActivitiesResult> {
     const athletes = await Firestore.getRegisteredAthletes();
-    const allActivities = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
-    Firestore.updateAthletesRefreshToken(allActivities);
-    return allActivities;
+    const results = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
+    if (!results.error) Firestore.updateAthletesRefreshToken(results.athletesWithActivities);
+    return results;
   }
 
   private static async publishInProgress(slack: Slack, resultsUrl: string, screenshotUrl: string) {

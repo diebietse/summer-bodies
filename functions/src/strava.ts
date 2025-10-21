@@ -51,23 +51,30 @@ export class Strava {
     };
   }
 
-  async getAllAthletesActivities(athletes: Athlete[], startUnixTime: number, endUnixTime: number): Promise<AthleteWithActivities[]> {
-    let activityPromises: Promise<AthleteWithActivities | void>[] = [];
+  async getAllAthletesActivities(athletes: Athlete[], startUnixTime: number, endUnixTime: number): Promise<GetAllAthletesActivitiesResult> {
+    let activityPromises: Promise<AthleteWithActivities | boolean>[] = [];
     for (const athlete of athletes) {
       activityPromises.push(
-        this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch(() =>
-          console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`)
-        )
+        this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch((error) => {
+          console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`);
+          console.log(error);
+          return true;
+        })
       );
     }
 
-    const resultsAndVoids = await Promise.all(activityPromises);
+    const resultsAndErrors = await Promise.all(activityPromises);
     const athleteActivities: AthleteWithActivities[] = [];
-    resultsAndVoids.forEach((result) => {
-      if (result) athleteActivities.push(result);
-    });
 
-    return athleteActivities;
+    for (const resultOrError of resultsAndErrors) {
+      if (typeof resultOrError === "boolean") {
+        return { athletesWithActivities: [], error: true };
+      } else {
+        athleteActivities.push(resultOrError);
+      }
+    }
+
+    return { athletesWithActivities: athleteActivities, error: false };
   }
 
   private static axiosConfig(authToken?: string): AxiosRequestConfig {
@@ -120,4 +127,9 @@ export interface CreateActivityRequest {
   distance?: number;
   trainer?: number;
   commute?: number;
+}
+
+export interface GetAllAthletesActivitiesResult {
+  athletesWithActivities: AthleteWithActivities[];
+  error: boolean;
 }
