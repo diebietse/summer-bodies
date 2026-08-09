@@ -7,36 +7,16 @@
 import { Challenge } from "../src/challenge";
 import { AthleteWithActivities } from "../src/challenge-models";
 import { Format } from "../src/format";
-// import { Firestore } from "../src/firestore";
-// import { Strava } from "../src/strava";
-import axios from "axios";
-// import { getCurrentWeekUnix, getPreviousWeekUnix } from "../src/util";
 import { readFileSync } from "fs";
 
 async function printFitcoin() {
-  // const config = await Firestore.getConfig();
-  // const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
-  // const athletes = await Firestore.getRegisteredAthletes();
-
   try {
-    const athletesWithActivities: AthleteWithActivities[] = JSON.parse(
-      readFileSync("athletesWithActivities-2024-10-28.json", "utf8")
-    );
-
-    // let athletesWithActivities = await strava.getAllAthletesActivities(
-    //   athletes,
-    //   getPreviousWeekUnix(),
-    //   getCurrentWeekUnix()
-    // );
+    const athletesWithActivities: AthleteWithActivities[] = JSON.parse(readFileSync("excluded/athletesWithActivities-2024-10-28.json", "utf8"));
     const results = Challenge.calculateResults(athletesWithActivities);
-    // let _unused = results;
-
     const contestantFitcoins = Challenge.calculateFitcoin(results);
     console.log(Format.fitcoinStatus("This Week's Possible Fitcoin so far", contestantFitcoins));
   } catch (error) {
-    if (axios.isAxiosError(error)) {
-      console.log(`Could not get activities: ${error.message}`);
-    }
+    console.log(`Could not calculate fitcoin: ${error}`);
     process.exit(1);
   }
 }

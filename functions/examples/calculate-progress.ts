@@ -2,9 +2,7 @@
 
 import { Challenge } from "../src/challenge";
 import { AthleteWithActivities } from "../src/challenge-models";
-// import { readFileSync } from "fs";
 
-// const activities: AthleteWithActivities[] = JSON.parse(readFileSync(`./examples/activities-example.json`, "utf8"));
 const activities: AthleteWithActivities[] = [
   {
     id: "some-athlete-id",

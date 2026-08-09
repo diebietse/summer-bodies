@@ -25,7 +25,6 @@ async function printResults() {
   const fileName = `excluded/athletesWithActivities-${end.format("YYYY-MM-DD")}.json`;
   console.log(`Saving activities to '${fileName}'`);
   writeFileSync(fileName, JSON.stringify(athletesWithActivities));
-  // const loadedAthletesWithActivities = JSON.parse(readFileSync("athletesWithActivities.json", "utf8"));
 }
 
 printResults();

@@ -6,18 +6,10 @@
 
 import { Challenge } from "../src/challenge";
 import { Format } from "../src/format";
-// import { Firestore } from "../src/firestore";
-// import { Strava } from "../src/strava";
-// import { getCurrentWeekUnix, now } from "../src/util";
 import { readFileSync } from "fs";
 
 async function printProgress() {
-  // const config = await Firestore.getConfig();
-  // const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
-
-  // const athletes = await Firestore.getRegisteredAthletes();
-  // const allActivities = await strava.getAllAthletesActivities(athletes, getCurrentWeekUnix(), now());
-  const allActivities = JSON.parse(readFileSync("athletesWithActivities-2025-09-15.json", "utf8"));
+  const allActivities = JSON.parse(readFileSync("excluded/athletesWithActivities-2025-09-15.json", "utf8"));
   const goalResults = Challenge.calculateGoalResults(allActivities, 10);
   console.log(Format.goalStatus("In Progress Goal Status", goalResults));
 }
