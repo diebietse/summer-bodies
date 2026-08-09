@@ -44,6 +44,8 @@ An example config upload is provided in [upload-config.ts][upload-config].
 
 To use the Strava API you will need an Oauth refresh token, to get that you will first need to create an [API application][strava-dev], you can then get your client ID and secret from the [strava api settings page][strava-api-settings]
 
+> **Note:** Strava no longer allows free accounts to create API applications. You need a paid Strava subscription on the account used to register the application before you can get a client ID and secret.
+
 The scope of the Strava OAuth token must be set to `read,activity:read,activity:write`.
 Write permission is needed to create the weekly placeholder event
 
@@ -65,7 +67,7 @@ For local development, service account credentials can be created by following [
 [getting-started]: https://cloud.google.com/docs/authentication/getting-started
 [google-functions]: https://cloud.google.com/functions
 [slack]: https://slack.com
-[slack-webhooks]: https://entersekt.slack.com/apps/A0F7XDUAZ-incoming-webhooks
+[slack-webhooks]: https://api.slack.com/messaging/webhooks
 [strava]: https://www.strava.com
 [strava-oauth]: https://developers.strava.com/docs/authentication/
 [strava-api-settings]: https://www.strava.com/settings/api
@@ -73,6 +75,6 @@ For local development, service account credentials can be created by following [
 [create-strava-token]: functions/examples/create-strava-token.ts
 [strava-dev]: https://developers.strava.com/docs/getting-started/#account
 [license-badge]: https://img.shields.io/badge/license-MIT-000000.svg
-[license-link]: https://github.com/diebietse/summer-bodies/blob/master/LICENSE
-[build-badge]: https://github.com/diebietse/summer-bodies/workflows/build/badge.svg?branch=master
-[build-link]: https://github.com/diebietse/summer-bodies/actions?query=workflow%3Abuild+branch%3Amaster
+[license-link]: https://github.com/diebietse/summer-bodies/blob/main/LICENSE
+[build-badge]: https://github.com/diebietse/summer-bodies/workflows/build/badge.svg?branch=main
+[build-link]: https://github.com/diebietse/summer-bodies/actions?query=workflow%3Abuild+branch%3Amain
