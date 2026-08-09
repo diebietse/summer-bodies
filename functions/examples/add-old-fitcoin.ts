@@ -1,4 +1,9 @@
 // Run with: npm run ts ./examples/add-old-fitcoin.ts
+// Requires:
+// * Valid config loaded on firestore (including strava credentials)
+// * A service-account.json file with a firestore service account in the project root directory
+// Writes fitcoin results to firestore for each of the last 12 weeks — has side effects,
+// not read-only
 
 import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";

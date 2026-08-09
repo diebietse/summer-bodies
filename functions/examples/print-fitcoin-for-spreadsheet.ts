@@ -1,8 +1,7 @@
 // Run with: npm run ts ./examples/print-fitcoin-for-spreadsheet.ts
 // Requires:
-// * Valid config loaded on firestore (including strava credentials)
 // * A service-account.json file with a firestore service account in the project root directory
-// * Some activities this week in the configured Strava club
+// * Fitcoin totals already stored in firestore (see add-old-fitcoin.ts or a completed weekly run)
 
 import { Firestore } from "../src/firestore";
 import axios from "axios";

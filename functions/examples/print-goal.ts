@@ -1,8 +1,7 @@
 // Run with: npm run ts ./examples/print-goal.ts
 // Requires:
-// * Valid config loaded on firestore (including strava credentials)
-// * A service-account.json file with a firestore service account in the project root directory
-// * Some activities this week in the configured Strava club
+// * An excluded/athletesWithActivities-<date>.json file (see save-activities-to-file.ts) —
+//   update the hardcoded filename below to match
 
 import { Challenge } from "../src/challenge";
 import { Format } from "../src/format";

@@ -1,4 +1,8 @@
 // Run with: npm run ts ./examples/send-slack.ts
+// Requires:
+// * Valid config loaded on firestore (for the Slack webhook URL)
+// * A service-account.json file with a firestore service account in the project root directory
+// Posts a message with hardcoded example image/results URLs to the "#test-bot" Slack channel
 
 import { Firestore } from "../src/firestore";
 import { Slack } from "../src/slack";
