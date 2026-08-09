@@ -2,7 +2,7 @@ import { Firestore } from "./firestore";
 import { GetAllAthletesActivitiesResult, Strava } from "./strava";
 import { Slack } from "./slack";
 import { Format } from "./format";
-import { AthleteWithActivities, ChallengeResults } from "./challenge-models";
+import { ChallengeResults } from "./challenge-models";
 import { Challenge } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
@@ -89,7 +89,7 @@ export class Bot {
   ): Promise<GetAllAthletesActivitiesResult> {
     const athletes = await Firestore.getRegisteredAthletes();
     const results = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
-    if (!results.error) Firestore.updateAthletesRefreshToken(results.athletesWithActivities);
+    if (!results.error) await Firestore.updateAthletesRefreshToken(results.athletesWithActivities);
     return results;
   }
 

@@ -42,7 +42,6 @@ export class Puppeteer {
     // Take screenshot as PNG
     const screenshot = await page.screenshot({
       type: "png",
-      path: "example.png",
       fullPage: true,
     });
 

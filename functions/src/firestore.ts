@@ -105,12 +105,7 @@ export class Firestore {
   }
 
   static async updateAthletesRefreshToken(athletes: Athlete[]) {
-    for (const athlete of athletes) {
-      const doc = db.collection("athletes").doc(athlete.id.toString());
-      doc.update({
-        refreshToken: athlete.refreshToken,
-      });
-    }
+    await Promise.all(athletes.map((athlete) => db.collection("athletes").doc(athlete.id.toString()).update({ refreshToken: athlete.refreshToken })));
   }
 
   static async storeResults(id: string, results: string): Promise<void> {
