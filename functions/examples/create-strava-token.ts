@@ -1,31 +1,38 @@
-import portfinder from "portfinder";
 import open from "open";
 import http from "http";
-import url from "url";
 import axios from "axios";
 import FormData from "form-data";
-import yargs from "yargs";
-
-portfinder.basePort = 9005;
+import { parseArgs } from "node:util";
 
 const STRAVA_OAUTH = "https://www.strava.com/oauth";
 
 // Get client ID and secret from: https://www.strava.com/settings/api
-const argv = yargs.options({
-  clientId: { type: "string", demandOption: true },
-  clientSecret: { type: "string", demandOption: true },
-}).argv;
+const {
+  values: { clientId, clientSecret },
+} = parseArgs({
+  options: {
+    clientId: { type: "string" },
+    clientSecret: { type: "string" },
+  },
+});
 
-auth(argv.clientId, argv.clientSecret);
+if (!clientId || !clientSecret) {
+  console.error("Usage: npm run ts ./examples/create-strava-token.ts -- --clientId <your-client-id> --clientSecret <your-client-secret>");
+  process.exit(1);
+}
+
+auth(clientId, clientSecret);
 
 // Based on https://github.com/firebase/firebase-tools/blob/v8.11.2/src/auth.js
 async function auth(clientId: string, clientSecret: string) {
   const nonce = (Math.random() * (2 << 29)).toString();
-  const port = await portfinder.getPortPromise();
-  const callbackUrl = `http://localhost:${port}`;
-  const authUrl = `${STRAVA_OAUTH}/authorize?client_id=${clientId}&state=${nonce}&response_type=code&redirect_uri=${callbackUrl}&approval_prompt=force&scope=read,activity:read,activity:write`;
 
-  server(nonce, clientId, clientSecret).listen(port, () => {
+  const httpServer = server(nonce, clientId, clientSecret);
+  httpServer.listen(0, () => {
+    const port = (httpServer.address() as { port: number }).port;
+    const callbackUrl = `http://localhost:${port}`;
+    const authUrl = `${STRAVA_OAUTH}/authorize?client_id=${clientId}&state=${nonce}&response_type=code&redirect_uri=${callbackUrl}&approval_prompt=force&scope=read,activity:read,activity:write`;
+
     console.log();
     console.log("Visit this URL on this device to log in:");
     console.log(authUrl);
@@ -43,15 +50,15 @@ function server(nonce: string, clientId: string, clientSecret: string): http.Ser
       return;
     }
 
-    const query = url.parse(req.url, true).query;
+    const query = new URL(req.url, "http://localhost").searchParams;
 
-    if (query.state !== nonce) {
+    if (query.get("state") !== nonce) {
       res.end();
       return;
     }
 
-    if (query.code) {
-      const code = typeof query.code === "string" ? query.code : query.code[0];
+    const code = query.get("code");
+    if (code) {
       server.close();
       res.end("Authentication Successful");
 
