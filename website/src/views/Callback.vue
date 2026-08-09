@@ -19,14 +19,12 @@ export default {
   },
   async mounted() {
     console.log("Mounted");
-    const firebaseURL =
-      "https://us-central1-summer-bodies.cloudfunctions.net/httpServer/athlete";
+    const firebaseURL = "https://us-central1-summer-bodies.cloudfunctions.net/httpServer/athlete";
 
     const code = this.$route.query.code;
     const scopes = this.$route.query.scope.split(",");
     if (!scopes.includes("read") || !scopes.includes("activity:read")) {
-      this.success =
-        "Please ensure 'View data about your activities' is selected as well.";
+      this.success = "Please ensure 'View data about your activities' is selected as well.";
       return;
     }
 

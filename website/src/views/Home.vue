@@ -8,12 +8,7 @@
     </h1>
 
     <!-- Image from https://developers.strava.com/guidelines/ -->
-    <img
-      type="button"
-      @click="login"
-      alt="Connect with Strava"
-      src="../assets/strava_login.svg"
-    />
+    <img type="button" @click="login" alt="Connect with Strava" src="../assets/strava_login.svg" />
   </div>
 </template>
 
@@ -23,8 +18,7 @@ export default {
   components: {},
   methods: {
     login() {
-      window.location =
-        "https://www.strava.com/oauth/authorize?client_id=52883&response_type=code&scope=activity:read&redirect_uri=https://summer-bodies.web.app/callback";
+      window.location = "https://www.strava.com/oauth/authorize?client_id=52883&response_type=code&scope=activity:read&redirect_uri=https://summer-bodies.web.app/callback";
     },
   },
   created() {
