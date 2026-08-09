@@ -1,20 +1,22 @@
 <template>
-  <img alt="Vue logo" src="../assets/entersekt.svg" />
+  <img :alt="`${appName} logo`" src="../assets/logo.svg" />
   <h1>
-    Enteraktive Challenge<br />
+    {{ appName }} Challenge<br />
     <!-- Image from https://developers.strava.com/guidelines/ -->
-    <img alt="Entersekt logo" src="../assets/strava_powered_by_horiz.svg" />
+    <img alt="Powered by Strava" src="../assets/strava_powered_by_horiz.svg" />
   </h1>
   <h2>{{ success }}</h2>
 </template>
 
 <script>
 import axios from "axios";
+import { APP_NAME } from "../config";
 
 export default {
   data() {
     return {
       success: "",
+      appName: APP_NAME,
     };
   },
   async mounted() {
@@ -22,6 +24,11 @@ export default {
     const firebaseURL = "https://us-central1-summer-bodies.cloudfunctions.net/httpServer/athlete";
 
     const code = this.$route.query.code;
+    if (!code || !this.$route.query.scope) {
+      this.success = "Authorization was not completed. Please try connecting with Strava again.";
+      return;
+    }
+
     const scopes = this.$route.query.scope.split(",");
     if (!scopes.includes("read") || !scopes.includes("activity:read")) {
       this.success = "Please ensure 'View data about your activities' is selected as well.";
@@ -38,7 +45,7 @@ export default {
     }
   },
   created() {
-    document.title = "Summer Bodies";
+    document.title = APP_NAME;
   },
 };
 </script>
