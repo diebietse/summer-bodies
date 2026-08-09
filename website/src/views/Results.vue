@@ -1,11 +1,11 @@
 <template>
   <div class="results">
-    <img alt="Entersekt" src="../assets/entersekt.svg" />
+    <img :alt="`${appName} logo`" src="../assets/logo.svg" />
     <h1>
       <span v-if="isResultsInProgress"> In progress results for {{ formatDateRange() }}<br />Results generated on {{ currentDateFormatted }} </span>
       <span v-else> Final results for {{ formatDateRange() }} </span>
       <br />
-      <img alt="Entersekt" src="../assets/strava_powered_by_horiz.svg" />
+      <img alt="Powered by Strava" src="../assets/strava_powered_by_horiz.svg" />
     </h1>
 
     <!-- Loading indicator -->
@@ -178,6 +178,7 @@
 
 <script>
 import axios from "axios";
+import { APP_NAME } from "../config";
 // import resultsData from "../../../functions/calculateResults.json";
 
 export default {
@@ -190,6 +191,7 @@ export default {
       activeTab: "challenges",
       goalFilter: "all",
       screenshot: false,
+      appName: APP_NAME,
     };
   },
   computed: {
@@ -316,7 +318,7 @@ export default {
     }
   },
   created() {
-    document.title = "Summer Bodies - Results";
+    document.title = `${APP_NAME} - Results`;
   },
 };
 </script>

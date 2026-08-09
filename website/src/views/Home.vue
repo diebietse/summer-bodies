@@ -1,10 +1,10 @@
 <template>
   <div class="home">
-    <img alt="Entersekt logo" src="../assets/entersekt.svg" />
+    <img :alt="`${appName} logo`" src="../assets/logo.svg" />
     <h1>
-      Enteraktive Challenge<br />
+      {{ appName }} Challenge<br />
       <!-- Image from https://developers.strava.com/guidelines/ -->
-      <img alt="Entersekt logo" src="../assets/strava_powered_by_horiz.svg" />
+      <img alt="Powered by Strava" src="../assets/strava_powered_by_horiz.svg" />
     </h1>
 
     <!-- Image from https://developers.strava.com/guidelines/ -->
@@ -13,16 +13,23 @@
 </template>
 
 <script>
+import { APP_NAME } from "../config";
+
 export default {
   name: "Home",
   components: {},
+  data() {
+    return {
+      appName: APP_NAME,
+    };
+  },
   methods: {
     login() {
       window.location = "https://www.strava.com/oauth/authorize?client_id=52883&response_type=code&scope=activity:read&redirect_uri=https://summer-bodies.web.app/callback";
     },
   },
   created() {
-    document.title = "Summer Bodies";
+    document.title = APP_NAME;
   },
 };
 </script>
