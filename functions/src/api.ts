@@ -25,7 +25,7 @@ export class Api {
 
     this.router.get("/results/:id", async (req: Request, res: Response) => {
       try {
-        const { id } = req.params;
+        const id = String(req.params.id);
         const results = await Firestore.getResults(id);
 
         if (results === null) {

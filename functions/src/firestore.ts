@@ -1,4 +1,5 @@
-import * as admin from "firebase-admin";
+import { initializeApp, cert } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 import * as path from "path";
 import * as fs from "fs";
 import { ContestantFitcoin, compareContestantFitcoin, Athlete } from "./challenge-models";
@@ -11,13 +12,13 @@ const CUSTOM_SERVICE_ACCOUNT = path.resolve(__dirname, "../../service-account.js
 if (fs.existsSync(CUSTOM_SERVICE_ACCOUNT)) {
   // If custom service account exists in expected place, use it
   console.log(`Using custom service account: ${CUSTOM_SERVICE_ACCOUNT}`);
-  admin.initializeApp({ credential: admin.credential.cert(CUSTOM_SERVICE_ACCOUNT) });
+  initializeApp({ credential: cert(CUSTOM_SERVICE_ACCOUNT) });
 } else {
   // If no custom service account exists this is deployed on GCP and googles sets it for us
-  admin.initializeApp();
+  initializeApp();
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 const configRef = db.collection("config").doc("config");
 
 export class Firestore {
