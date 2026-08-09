@@ -7,7 +7,12 @@ import moment from "moment";
 
 async function addFitcoin(strava: Strava, startUnixTime: number, endUnixTime: number) {
   const athletes = await Firestore.getRegisteredAthletes();
-  const athletesWithActivities = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
+  const { athletesWithActivities, error } = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
+  if (error) {
+    console.log(`Could not get athlete activities for ${moment.unix(startUnixTime).toDate()} - ${moment.unix(endUnixTime).toDate()}`);
+    return;
+  }
+
   const results = Challenge.calculateResults(athletesWithActivities);
   const contestantFitcoin = Challenge.calculateFitcoin(results);
 

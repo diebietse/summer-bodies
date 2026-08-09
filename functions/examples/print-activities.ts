@@ -16,11 +16,11 @@ async function printActivities() {
   const athletes = await Firestore.getRegisteredAthletes();
 
   try {
-    let athletesWithActivities = await strava.getAllAthletesActivities(
-      athletes,
-      previousWeekUnix(),
-      currentWeekUnix()
-    );
+    const { athletesWithActivities, error } = await strava.getAllAthletesActivities(athletes, previousWeekUnix(), currentWeekUnix());
+    if (error) {
+      console.log("Could not get all athlete activities");
+      process.exit(1);
+    }
     const progress = Challenge.calculateGoalResults(athletesWithActivities, 10);
     console.log(Format.goalStatus("In Progress Goal Status", progress));
   } catch (error) {
