@@ -3,16 +3,38 @@ name: build
 on: [push, pull_request]
 
 jobs:
-  build:
-    name: verify
+  functions:
+    name: verify functions
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "12.x"
-      - run: npm install
+          node-version-file: functions/.nvmrc
+      - run: npm ci
         working-directory: functions
       - run: npm run build
         working-directory: functions
+      - run: npm run typecheck
+        working-directory: functions
+      - run: npm run prettier-check
+        working-directory: functions
+
+  website:
+    name: verify website
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: website/.nvmrc
+      - run: npm ci
+        working-directory: website
+      - run: npm run build
+        working-directory: website
+      - run: npx eslint .
+        working-directory: website
+      - run: npm run prettier-check
+        working-directory: website
