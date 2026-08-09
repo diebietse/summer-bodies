@@ -38,6 +38,8 @@ async function printResults() {
     monthTotal += calculateTotal(date);
   }
   console.log(`Total moving time for Challenge: ${Math.floor(monthTotal / 60 / 60)}h`);
+
+  const temp = 7;
 }
 
 function calculateTotal(date: string): number {

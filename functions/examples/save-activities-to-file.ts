@@ -9,7 +9,7 @@ import { Strava } from "../src/strava";
 import { weeksAgo } from "../src/util";
 import { writeFileSync } from "fs";
 
-const end = weeksAgo(7);
+const end = weeksAgo(1);
 const start = end.clone().subtract(1, "week");
 
 async function printResults() {
@@ -22,7 +22,7 @@ async function printResults() {
   console.log(`Fetching activities from ${start.format("YYYY-MM-DD")} to ${end.format("YYYY-MM-DD")}`);
   const athletesWithActivities = await strava.getAllAthletesActivities(athletes, start.unix(), end.unix());
 
-  const fileName = `athletesWithActivities-${end.format("YYYY-MM-DD")}.json`;
+  const fileName = `excluded/athletesWithActivities-${end.format("YYYY-MM-DD")}.json`;
   console.log(`Saving activities to '${fileName}'`);
   writeFileSync(fileName, JSON.stringify(athletesWithActivities));
   // const loadedAthletesWithActivities = JSON.parse(readFileSync("athletesWithActivities.json", "utf8"));

@@ -1,4 +1,4 @@
-// Run with: npm run ts ./examples/print-fitcoin-for-spreadsheet.ts
+// Run with: npm run ts ./examples/print-fitcoin-totals.ts
 // Requires:
 // * Valid config loaded on firestore (including strava credentials)
 // * A service-account.json file with a firestore service account in the project root directory
@@ -6,15 +6,12 @@
 
 import { Firestore } from "../src/firestore";
 import axios from "axios";
-import { shuffle } from "../src/util";
+import { Format } from "../src/format";
 
 async function printFitcoin() {
   try {
     const totalFitcoin = await Firestore.getFitcoinTotals();
-    const totalFitcoinRandomized = shuffle(totalFitcoin);
-    totalFitcoinRandomized.forEach((contestant) => {
-      console.log(`${contestant.name},${contestant.fitcoin}`);
-    });
+    console.log(Format.fitcoinStatus("Total Fitcoin Results", totalFitcoin));
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.log(`Could not get total fitcoin: ${error.message}`);

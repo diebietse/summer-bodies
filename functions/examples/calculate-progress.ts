@@ -2,7 +2,9 @@
 
 import { Challenge } from "../src/challenge";
 import { AthleteWithActivities } from "../src/challenge-models";
+// import { readFileSync } from "fs";
 
+// const activities: AthleteWithActivities[] = JSON.parse(readFileSync(`./examples/activities-example.json`, "utf8"));
 const activities: AthleteWithActivities[] = [
   {
     id: "some-athlete-id",
@@ -17,25 +19,29 @@ const activities: AthleteWithActivities[] = [
         type: "Golf",
         distance: 1,
         moving_time: 60 * 30,
+        elapsed_time: 60 * 30,
         total_elevation_gain: 1,
         name: "I cycled too much",
         start_date: "now",
+        average_speed: 0.549,
       },
       {
         id: 2,
         type: "Golf",
         distance: 1,
         moving_time: 60 * 30,
+        elapsed_time: 60 * 30,
         total_elevation_gain: 1,
         name: "I cycled too much",
         start_date: "now",
+        average_speed: 0.549,
       },
     ],
   },
 ];
 
 async function getProgress() {
-  const progress = await Challenge.calculateProgress(activities);
+  const progress = Challenge.calculateGoalResults(activities, 10);
   console.log(JSON.stringify(progress, null, 2));
 }
 

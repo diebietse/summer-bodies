@@ -1,9 +1,9 @@
 // Run with: npm run ts ./examples/format.ts
 
 import { Format } from "../src/format";
-import { StravaEvent, ActivityType } from "../src/challenge-models";
+import { ActivityType, ChallengeEvent } from "../src/challenge-models";
 
-const event: StravaEvent = {
+const event: ChallengeEvent = {
   name: ActivityType.OnWheels,
   groupings: [
     {
@@ -35,7 +35,7 @@ const event: StravaEvent = {
 
 function printResults() {
   console.log("Top 5:");
-  console.log(Format.eventTop5Table(event, "Some Club"));
+  console.log(Format.finalEventTop(event));
 }
 
 printResults();

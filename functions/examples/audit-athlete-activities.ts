@@ -6,25 +6,36 @@
 
 import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";
-import { getPreviousWeekUnix, getCurrentWeekUnix } from "../src/util";
+import { previousWeekUnix, currentWeekUnix, now } from "../src/util";
 
-const athleteName = "Jedri";
+const athleteName = "Strava";
 
 async function printResults() {
   const config = await Firestore.getConfig();
   const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
   const athletes = await Firestore.getRegisteredAthletes();
   const selectedAthlete = athletes.filter((athlete) => athlete.firstname.includes(athleteName));
-  const athletesWithActivities = await strava.getAllAthletesActivities(
+  // selectedAthlete[0].refreshToken = "";
+  const result = await strava.getAllAthletesActivities(
     selectedAthlete,
-    getPreviousWeekUnix(),
-    getCurrentWeekUnix()
+    previousWeekUnix(),
+    currentWeekUnix()
+    // now()
   );
 
-  for (const athlete of athletesWithActivities) {
-    console.log(`Results for '${athlete.firstname} ${athlete.lastname}'`);
+  if (result.error) {
+    console.log("Could not get all athlete activities");
+    return;
+  }
+
+  for (const athlete of result.athletesWithActivities) {
+    console.log(`Results for '${athlete.firstname} ${athlete.lastname}' (https://www.strava.com/athletes/${athlete.id})`);
     for (const activity of athlete.activities) {
-      console.log(`Activity name: '${activity.name}', Moving time: '${Math.round(activity.moving_time / 60)}min'`);
+      console.log(
+        `Activity name: '${activity.name}', Type: '${activity.type}' , Moving time: '${Math.round(
+          activity.moving_time / 60
+        )}min', Elapsed time: '${Math.round(activity.elapsed_time / 60)}min'`
+      );
     }
   }
 }

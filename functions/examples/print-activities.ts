@@ -8,7 +8,7 @@ import { Format } from "../src/format";
 import { Firestore } from "../src/firestore";
 import axios from "axios";
 import { Strava } from "../src/strava";
-import { getCurrentWeekUnix, getPreviousWeekUnix } from "../src/util";
+import { currentWeekUnix, previousWeekUnix } from "../src/util";
 
 async function printActivities() {
   const config = await Firestore.getConfig();
@@ -18,10 +18,10 @@ async function printActivities() {
   try {
     let athletesWithActivities = await strava.getAllAthletesActivities(
       athletes,
-      getPreviousWeekUnix(),
-      getCurrentWeekUnix()
+      previousWeekUnix(),
+      currentWeekUnix()
     );
-    const progress = await Challenge.calculateProgress(athletesWithActivities);
+    const progress = Challenge.calculateGoalResults(athletesWithActivities, 10);
     console.log(Format.goalStatus("In Progress Goal Status", progress));
   } catch (error) {
     if (axios.isAxiosError(error)) {

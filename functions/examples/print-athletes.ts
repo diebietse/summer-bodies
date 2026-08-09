@@ -9,12 +9,9 @@ import { Athlete } from "../src/challenge-models";
 
 async function printAthletes() {
   const athletes = await Firestore.getRegisteredAthletes();
-  ["Group 1", "Group 2"].forEach((club) => {
-    const clubAthletes = athletes
-      .filter((athlete) => athlete.club === club)
-      .sort((a, b) => (fullName(a) > fullName(b) ? 1 : -1));
-    console.log(Format.athletes(`Registered Athletes in '${club}' (${clubAthletes.length})`, clubAthletes));
-  });
+  const sortedAthletes = athletes
+    .sort((a, b) => (fullName(a) > fullName(b) ? 1 : -1));
+  console.log(Format.athletes(`Registered Athletes (${sortedAthletes.length})`, sortedAthletes));
 
   console.log(`Total athletes: ${athletes.length}`);
 }
