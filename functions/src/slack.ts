@@ -2,7 +2,10 @@ import axios from "axios";
 
 // Based on https://docs.slack.dev/messaging/sending-messages-using-incoming-webhooks/
 export class Slack {
-  constructor(private webHookUrl: string, private channel?: string) {}
+  constructor(
+    private webHookUrl: string,
+    private channel?: string,
+  ) {}
 
   async post(message: string) {
     await axios.post(this.webHookUrl, {

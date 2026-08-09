@@ -15,7 +15,7 @@ export const weekDaily0900 = onSchedule(
   },
   async () => {
     await Bot.publishDailyUpdates();
-  }
+  },
 );
 
 export const monday0930 = onSchedule(
@@ -26,7 +26,7 @@ export const monday0930 = onSchedule(
   },
   async () => {
     await Bot.publishWeeklyResults();
-  }
+  },
 );
 
 const server = new Server();

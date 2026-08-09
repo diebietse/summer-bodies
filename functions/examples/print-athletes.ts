@@ -9,8 +9,7 @@ import { Athlete } from "../src/challenge-models";
 
 async function printAthletes() {
   const athletes = await Firestore.getRegisteredAthletes();
-  const sortedAthletes = athletes
-    .sort((a, b) => (fullName(a) > fullName(b) ? 1 : -1));
+  const sortedAthletes = athletes.sort((a, b) => (fullName(a) > fullName(b) ? 1 : -1));
   console.log(Format.athletes(`Registered Athletes (${sortedAthletes.length})`, sortedAthletes));
 
   console.log(`Total athletes: ${athletes.length}`);

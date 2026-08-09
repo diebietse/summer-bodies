@@ -19,7 +19,7 @@ async function printResults() {
   const result = await strava.getAllAthletesActivities(
     selectedAthlete,
     previousWeekUnix(),
-    currentWeekUnix()
+    currentWeekUnix(),
     // now()
   );
 
@@ -33,8 +33,8 @@ async function printResults() {
     for (const activity of athlete.activities) {
       console.log(
         `Activity name: '${activity.name}', Type: '${activity.type}' , Moving time: '${Math.round(
-          activity.moving_time / 60
-        )}min', Elapsed time: '${Math.round(activity.elapsed_time / 60)}min'`
+          activity.moving_time / 60,
+        )}min', Elapsed time: '${Math.round(activity.elapsed_time / 60)}min'`,
       );
     }
   }

@@ -11,7 +11,7 @@ async function main() {
     await slack.postResults(
       `Screenshot of in progress results on ${nowPretty()}`,
       "https://firebasestorage.googleapis.com/v0/b/summer-bodies.appspot.com/o/example.png?alt=media&token=90a98a5b-4917-4614-a828-8eb2ccf23e7c",
-      "https://summer-bodies.web.app/results/d07d3718-ffb4-4983-bef6-bb04e3a8e029"
+      "https://summer-bodies.web.app/results/d07d3718-ffb4-4983-bef6-bb04e3a8e029",
     );
   } catch (e) {
     console.log(e);

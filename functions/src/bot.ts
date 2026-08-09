@@ -85,7 +85,7 @@ export class Bot {
   private static async getAllStravaAthletesActivities(
     strava: Strava,
     startUnixTime: number,
-    endUnixTime: number
+    endUnixTime: number,
   ): Promise<GetAllAthletesActivitiesResult> {
     const athletes = await Firestore.getRegisteredAthletes();
     const results = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);

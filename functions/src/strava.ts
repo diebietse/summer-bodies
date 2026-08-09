@@ -6,7 +6,10 @@ const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code";
 const ACTIVITIES_PER_PAGE = 50;
 
 export class Strava {
-  constructor(private clientId: string, private clientSecret: string) {}
+  constructor(
+    private clientId: string,
+    private clientSecret: string,
+  ) {}
 
   static async getToken(clientId: string, clientSecret: string, refreshToken: string): Promise<TokenRefreshResponse> {
     const client = axios.create(this.axiosConfig());
@@ -59,7 +62,7 @@ export class Strava {
           console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`);
           console.log(error);
           return true;
-        })
+        }),
       );
     }
 

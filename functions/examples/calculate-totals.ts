@@ -24,17 +24,7 @@ async function printResults() {
   console.log(`Total hours in a week: ${7 * 24}h`);
 
   let monthTotal = 0;
-  for (const date of [
-    "2024-09-02",
-    "2024-09-09",
-    "2024-09-16",
-    "2024-09-23",
-    "2024-09-30",
-    "2024-10-07",
-    "2024-10-14",
-    "2024-10-21",
-    "2024-10-28",
-  ]) {
+  for (const date of ["2024-09-02", "2024-09-09", "2024-09-16", "2024-09-23", "2024-09-30", "2024-10-07", "2024-10-14", "2024-10-21", "2024-10-28"]) {
     monthTotal += calculateTotal(date);
   }
   console.log(`Total moving time for Challenge: ${Math.floor(monthTotal / 60 / 60)}h`);
