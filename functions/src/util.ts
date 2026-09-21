@@ -54,6 +54,23 @@ export function nextWeekUnix(): number {
   return weeksAgoUnix(-1);
 }
 
+// Start of today (UTC) - the exclusive upper bound of "every day so far", since today isn't over yet.
+export function todayUnix(): number {
+  return moment.utc().startOf("day").unix();
+}
+
+// Every UTC calendar date ("YYYY-MM-DD") from `startUnix` (inclusive) up to `endUnixExclusive` (exclusive).
+export function weekDateStrings(startUnix: number, endUnixExclusive: number): string[] {
+  const dates: string[] = [];
+  const cursor = moment.unix(startUnix).utc();
+  const end = moment.unix(endUnixExclusive).utc();
+  while (cursor.isBefore(end)) {
+    dates.push(cursor.format("YYYY-MM-DD"));
+    cursor.add(1, "day");
+  }
+  return dates;
+}
+
 // https://stackoverflow.com/a/2450976
 // Fisher–Yates shuffle https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 export function shuffle(array: any[]): any[] {

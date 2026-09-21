@@ -5,13 +5,12 @@
   "type": "module",
   "scripts": {
     "serve": "vite",
-    "build": "vite build",
+    "build": "node scripts/fetch-branding.mjs",
     "preview": "vite preview",
     "lint": "eslint . --fix",
-    "prettier-check": "prettier --check \"src/**/*.{js,vue}\"",
-    "prettier-fix": "prettier --write \"src/**/*.{js,vue}\"",
-    "deploy": "npm run build && firebase deploy --only hosting",
-    "deploy:branded": "bash scripts/deploy-with-branding.sh"
+    "prettier-check": "prettier --check \"src/**/*.{js,vue}\" \"scripts/**/*.mjs\"",
+    "prettier-fix": "prettier --write \"src/**/*.{js,vue}\" \"scripts/**/*.mjs\"",
+    "deploy": "npm run build && firebase deploy --only hosting"
   },
   "dependencies": {
     "axios": "^1.19.0",

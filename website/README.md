@@ -12,24 +12,68 @@ npm install
 npm run serve   # dev server with hot reload
 ```
 
+## Local preview
+
+`npm run serve`, then visit `/preview` for the results page rendered with committed mock data
+(`src/mock/results.js`) instead of a live `/results/:id` fetch — useful for checking layout/styling changes
+without needing real Strava/Firestore data. Toggle `?scenario=in-progress` / `?scenario=final` (or the links
+on the page) to see both the in-progress and final-results copy.
+
+This route only exists in dev builds — `router/index.js` registers it behind `import.meta.env.DEV`, so it (and
+its mock data) are dead-code-eliminated out of `npm run build`'s output.
+
 ## Scripts
 
-| Command                  | Purpose                                                                                 |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| `npm run serve`          | Start the Vite dev server                                                               |
-| `npm run build`          | Build for production into `dist/`                                                       |
-| `npm run preview`        | Preview a production build locally                                                      |
-| `npm run lint`           | Lint and auto-fix with ESLint                                                           |
-| `npm run prettier-check` | Check formatting                                                                        |
-| `npm run prettier-fix`   | Auto-format with Prettier                                                               |
-| `npm run deploy`         | Build and deploy to Firebase Hosting                                                    |
-| `npm run deploy:branded` | Build and deploy with a branding overlay, then restore the generic branding (see below) |
+| Command                  | Purpose                                                            |
+| ------------------------ | ------------------------------------------------------------------ |
+| `npm run serve`          | Start the Vite dev server                                          |
+| `npm run build`          | Fetch branding, then build for production into `dist/` (see below) |
+| `npm run preview`        | Preview a production build locally                                 |
+| `npm run lint`           | Lint and auto-fix with ESLint                                      |
+| `npm run prettier-check` | Check formatting                                                   |
+| `npm run prettier-fix`   | Auto-format with Prettier                                          |
+| `npm run deploy`         | Build and deploy to Firebase Hosting                               |
 
-## Configuration
+## Branding
 
-The displayed app name comes from the `VITE_APP_NAME` environment variable
-(see `website/src/config.js`), defaulting to "Summer Bodies" via the
-committed `.env`. Override it locally with a gitignored `.env.local`.
+The app name and logo are white-labeled from Firestore rather than a local
+overlay folder — the single source of truth is Firestore, set once via
+[upload-branding.ts][upload-branding]:
+
+```bash
+# from functions/
+npm run ts ./examples/upload-branding.ts -- --appName "My Challenge" --logo ./my-logo.svg
+```
+
+This uploads the logo to Firebase Storage and stores the app name and logo
+URL in Firestore for your project.
+
+`npm run build` (`scripts/fetch-branding.mjs`) fetches that branding at
+**build time** — not in the browser — via the deployed `GET /branding`
+endpoint, and applies it only for that build:
+
+- Writes `VITE_APP_NAME` into a temporary `.env.local`
+- Downloads the logo over `src/assets/logo.svg`
+- Runs `vite build`
+- Restores the generic `.env.local`/`logo.svg` afterward, regardless of
+  whether the build succeeds or fails — the working tree is never left
+  dirty
+
+Branding has to be baked in at build time (into the static `index.html`
+`<title>` and the bundled logo), not fetched by the browser after the page
+loads, so that link unfurlers (Slack, WhatsApp, etc.) — which read the raw
+HTML and never run JavaScript — see the correct name and logo.
+
+If Firestore has no branding configured, or the fetch fails (e.g. no
+network), the build falls back to the generic defaults: the `VITE_APP_NAME`
+environment variable (see `src/config.js`, defaulting to "Summer Bodies" via
+the committed `.env`) and the committed `src/assets/logo.svg`.
+
+Note: the favicon (`public/favicon.ico`) isn't covered by this — it's a
+static file with no per-deployment branding, the same as it always has
+been.
+
+[upload-branding]: ../functions/examples/upload-branding.ts
 
 ## Deploy
 
@@ -37,16 +81,6 @@ committed `.env`. Override it locally with a gitignored `.env.local`.
 npm run deploy
 ```
 
-To deploy with a different logo/app name (e.g. for a white-labeled
-version of this site), point `deploy:branded` at a branding folder
-containing `logo.svg` and `.env.local`:
-
-```bash
-npm run deploy:branded -- <path-to-branding-folder>
-```
-
-The branding is applied only for that build, then reverted — the
-working tree is left clean afterward whether the build/deploy
-succeeds or fails. See `scripts/deploy-with-branding.sh` for details.
-Branding folders themselves aren't part of this repo; keep them
-wherever you keep local, gitignored config.
+Each self-hosted deployment runs its own Firebase project; if you've forked
+this repo, update `API_BASE_URL` in `src/apiBase.js` to point at your
+project's Cloud Functions URL before deploying.

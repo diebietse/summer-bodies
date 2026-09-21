@@ -1,7 +1,24 @@
 import { getStorage, getDownloadURL } from "firebase-admin/storage";
 
-// Get the Firebase Storage bucket
-const bucket = getStorage().bucket("summer-bodies.appspot.com");
+// The default bucket for whichever Firebase project this is running in - not hardcoded, so this also
+// works for a self-hosted deployment running in its own project.
+const bucket = getStorage().bucket();
+
+async function uploadFileToStorage(data: Buffer, path: string, contentType: string): Promise<string> {
+  try {
+    const file = bucket.file(path);
+    await file.save(data, {
+      metadata: {
+        contentType,
+        cacheControl: "public, max-age=3600", // Cache for 1 hour
+      },
+    });
+    return getDownloadURL(file);
+  } catch (error) {
+    console.error(`Error uploading ${path} to Firebase Storage:`, error);
+    throw new Error(`Failed to upload ${path}: ${error}`);
+  }
+}
 
 /**
  * Uploads a PNG image in Uint8Array format to Firebase Storage
@@ -10,24 +27,17 @@ const bucket = getStorage().bucket("summer-bodies.appspot.com");
  * @returns Promise<string> - The public download URL of the uploaded image
  */
 export async function uploadPngToStorage(imageData: Uint8Array, fileName: string): Promise<string> {
-  try {
-    // Ensure the filename has .png extension
-    const fullFileName = fileName.endsWith(".png") ? fileName : `${fileName}.png`;
+  const fullFileName = fileName.endsWith(".png") ? fileName : `${fileName}.png`;
+  return uploadFileToStorage(Buffer.from(imageData), `results/${fullFileName}`, "image/png");
+}
 
-    // Create a reference to the file in storage
-    const file = bucket.file(`results/${fullFileName}`);
-
-    // Upload the image data
-    await file.save(Buffer.from(imageData), {
-      metadata: {
-        contentType: "image/png",
-        cacheControl: "public, max-age=3600", // Cache for 1 hour
-      },
-    });
-
-    return getDownloadURL(file);
-  } catch (error) {
-    console.error("Error uploading image to Firebase Storage:", error);
-    throw new Error(`Failed to upload image: ${error}`);
-  }
+/**
+ * Uploads a logo file (svg/png/etc) to Firebase Storage for use as branding - see Firestore.uploadBranding.
+ * @param fileData - The raw file bytes
+ * @param fileName - The name for the file, including extension (e.g. "logo.svg")
+ * @param contentType - The MIME type of the file (e.g. "image/svg+xml")
+ * @returns Promise<string> - The public download URL of the uploaded file
+ */
+export async function uploadLogoToStorage(fileData: Buffer, fileName: string, contentType: string): Promise<string> {
+  return uploadFileToStorage(fileData, `branding/${fileName}`, contentType);
 }

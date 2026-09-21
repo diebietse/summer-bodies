@@ -1,3 +1,4 @@
+import moment from "moment";
 import {
   ActivityType,
   GroupingType,
@@ -11,6 +12,8 @@ import {
   Activity,
   AthleteWithActivities,
   ChallengeResults,
+  StreakState,
+  STREAK_MIN_DISTANCE_M,
 } from "./challenge-models";
 
 export class Challenge {
@@ -84,6 +87,45 @@ export class Challenge {
       weekResults.push(result);
     }
     return weekResults.sort(this.compareWeeklyResult);
+  }
+
+  // Advances each athlete's 1km-a-day streak across `challengeDates` (ascending "YYYY-MM-DD" dates, evaluated in
+  // order against each activity's calendar day). Once a date has no qualifying activity, the athlete is frozen as
+  // eliminated (`alive: false`) with whatever streak they'd built up, and stays that way on every later call
+  // regardless of what they log afterwards.
+  //
+  // `challengeDates` is deliberately the caller's responsibility: activities can be uploaded to Strava late (up to
+  // Sunday 23:59 for that week, per the challenge rules), so callers should only pass dates whose upload window has
+  // fully closed - see Bot.finalizeStreaks, which only evaluates a week once that week has ended.
+  static calculateStreakUpdates(
+    athletes: AthleteWithActivities[],
+    previousStreaks: Map<string, StreakState>,
+    challengeDates: string[],
+  ): StreakState[] {
+    return athletes.map((athlete) => {
+      const name = `${athlete.firstname} ${athlete.lastname}`;
+      const previous = previousStreaks.get(athlete.id) ?? { athleteId: athlete.id, name, alive: true, currentStreak: 0 };
+
+      if (!previous.alive) return { ...previous, name };
+
+      const qualifyingDates = new Set(
+        athlete.activities
+          .filter((activity) => Challenge.toOurActivity(activity.type) === ActivityType.OnFoot && activity.distance >= STREAK_MIN_DISTANCE_M)
+          .map((activity) => moment.utc(activity.start_date).format("YYYY-MM-DD")),
+      );
+
+      let alive = true;
+      let currentStreak = previous.currentStreak;
+      for (const date of challengeDates) {
+        if (!qualifyingDates.has(date)) {
+          alive = false;
+          break;
+        }
+        currentStreak++;
+      }
+
+      return { athleteId: athlete.id, name, alive, currentStreak };
+    });
   }
 
   static calculateFitcoin(results: ChallengeResults): ContestantFitcoin[] {
@@ -202,7 +244,7 @@ export class Challenge {
     return event;
   }
 
-  private static toOurActivity(activity: string): ActivityType {
+  static toOurActivity(activity: string): ActivityType {
     switch (activity) {
       case "Hike":
       case "Run":

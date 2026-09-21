@@ -18,6 +18,8 @@ jobs:
         working-directory: functions
       - run: npm run typecheck
         working-directory: functions
+      - run: npm test
+        working-directory: functions
       - run: npm run prettier-check
         working-directory: functions
 

@@ -33,6 +33,9 @@
           <li class="nav-item" role="presentation">
             <button class="nav-link" :class="{ active: activeTab === 'goals' }" @click="activeTab = 'goals'" type="button">Goal Achievements</button>
           </li>
+          <li v-if="hasStreaks" class="nav-item" role="presentation">
+            <button class="nav-link" :class="{ active: activeTab === 'streak' }" @click="activeTab = 'streak'" type="button">🏃 Streak Challenge</button>
+          </li>
         </ul>
       </div>
 
@@ -171,6 +174,65 @@
           </div>
         </div>
       </div>
+
+      <!-- Streak Challenge Tab -->
+      <div v-if="activeTab === 'streak' && hasStreaks" class="tab-content">
+        <div class="streak-results">
+          <h2 class="section-title">🏃 1km-a-day Streak Challenge</h2>
+          <p v-if="isResultsInProgress" class="text-muted text-center mb-4">On track so far this week - not final. Missing a day doesn't eliminate you until this week's Sunday 23:59 upload deadline has passed.</p>
+          <p v-else class="text-muted text-center mb-4">This week's result - final.</p>
+
+          <div class="row mb-4 justify-content-center">
+            <div class="col-md-3 col-sm-6 mb-3">
+              <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                  <h3 class="card-title">{{ stillInCount }}</h3>
+                  <p class="card-text">Still In It</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+              <div class="card text-center bg-secondary text-white">
+                <div class="card-body">
+                  <h3 class="card-title">{{ eliminatedCount }}</h3>
+                  <p class="card-text">Eliminated</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Name</th>
+                      <th scope="col">Days Survived</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(streak, index) in sortedStreaks" :key="streak.athleteId" :class="streak.alive ? 'table-success' : 'table-light'">
+                      <td>{{ index + 1 }}</td>
+                      <td class="fw-bold">{{ streak.name }}</td>
+                      <td>{{ streak.currentStreak }}</td>
+                      <td>
+                        <span class="badge" :class="streak.alive ? 'bg-success' : 'bg-secondary'">
+                          {{ streak.alive ? "Still In" : "Eliminated" }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <p class="text-muted mt-3 small text-center">Miss a day of at least 1km on foot and you're out - eliminations are only final once the week's Sunday 23:59 upload deadline has passed.</p>
+        </div>
+      </div>
     </div>
     <!-- End of main content conditional -->
   </div>
@@ -178,11 +240,19 @@
 
 <script>
 import axios from "axios";
+import { API_BASE_URL } from "../apiBase";
 import { APP_NAME } from "../config";
-// import resultsData from "../../../functions/calculateResults.json";
 
 export default {
   name: "Results",
+  props: {
+    // Lets a caller (currently only the dev-only Preview.vue) inject results directly instead of fetching by
+    // route id - see website/README.md "Local preview".
+    mockData: {
+      type: Object,
+      default: null,
+    },
+  },
   data() {
     return {
       results: null,
@@ -237,6 +307,19 @@ export default {
       }
       return this.results.goalResults;
     },
+    hasStreaks() {
+      return !!this.results && Array.isArray(this.results.streaks) && this.results.streaks.length > 0;
+    },
+    sortedStreaks() {
+      if (!this.hasStreaks) return [];
+      return [...this.results.streaks].sort((a, b) => b.currentStreak - a.currentStreak);
+    },
+    stillInCount() {
+      return this.sortedStreaks.filter((s) => s.alive).length;
+    },
+    eliminatedCount() {
+      return this.sortedStreaks.filter((s) => !s.alive).length;
+    },
   },
   methods: {
     formatValue(value, unit) {
@@ -287,7 +370,22 @@ export default {
       return "position-default";
     },
   },
+  watch: {
+    // Preview.vue reuses this same instance across scenario changes (same /preview route, just a different
+    // query), so mounted() alone would never see a later mockData value - only its first one.
+    mockData: {
+      immediate: true,
+      handler(newValue) {
+        if (!newValue) return;
+        this.results = newValue;
+        this.loading = false;
+        this.error = null;
+      },
+    },
+  },
   async mounted() {
+    if (this.mockData) return; // handled by the watcher above
+
     this.loading = true;
     this.error = null;
 
@@ -303,9 +401,8 @@ export default {
     }
 
     try {
-      const response = await axios.get(`https://us-central1-summer-bodies.cloudfunctions.net/httpServer/results/${this.$route.params.id}`);
+      const response = await axios.get(`${API_BASE_URL}/results/${this.$route.params.id}`);
       this.results = response.data;
-      // this.results = resultsData;
     } catch (error) {
       console.error("Error fetching results:", error);
       if (error.response && error.response.status === 404) {

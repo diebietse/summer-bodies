@@ -27,6 +27,10 @@ Achieve a position on the leader boards at the end of each week and earn FitCoin
 | ------------- | -------------- | --------- | --------- | --------- | --------- | --------- |
 | Other         | Duration       | 5 FitCoin | 4 FitCoin | 3 FitCoin | 2 FitCoin | 1 FitCoin |
 
+## Streak Challenge
+
+Log at least 1km of an On Foot activity (Run/Walk/Hike) every single day between `challengeStartDate` and `challengeEndDate`. Missing a day eliminates you for the rest of the challenge. Everyone still in earns 1 FitCoin for each day survived, and a daily update of who's still in is posted to `slackChannelDaily`.
+
 ## Configuration
 
 | Configuration Item | Description                                                      |
@@ -37,8 +41,14 @@ Achieve a position on the leader boards at the end of each week and earn FitCoin
 | stravaRefreshToken | Strava OAuth refresh token of the bot account                    |
 | stravaClientSecret | Strava OAuth client secret token of the bot account              |
 | stravaClubs        | Array of Strava clubs to monitor                                 |
+| challengeStartDate | Inclusive UTC start date (`YYYY-MM-DD`) of the streak challenge  |
+| challengeEndDate   | Inclusive UTC end date (`YYYY-MM-DD`) of the streak challenge    |
 
 An example config upload is provided in [upload-config.ts][upload-config].
+
+## Branding
+
+The website's app name and logo are white-labeled at runtime from Firestore, not baked into the build — see [website's README][website-readme] and [upload-branding.ts][upload-branding].
 
 ### Strava OAuth Refresh Token
 
@@ -72,6 +82,8 @@ For local development, service account credentials can be created by following [
 [strava-oauth]: https://developers.strava.com/docs/authentication/
 [strava-api-settings]: https://www.strava.com/settings/api
 [upload-config]: functions/examples/upload-config.ts
+[upload-branding]: functions/examples/upload-branding.ts
+[website-readme]: website/README.md
 [create-strava-token]: functions/examples/create-strava-token.ts
 [strava-dev]: https://developers.strava.com/docs/getting-started/#account
 [license-badge]: https://img.shields.io/badge/license-MIT-000000.svg

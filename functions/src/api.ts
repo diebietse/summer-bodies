@@ -1,6 +1,9 @@
 import { Request, Response, Router } from "express";
 import { Firestore } from "./firestore";
 import { Strava } from "./strava";
+
+const DEFAULT_APP_NAME = "Summer Bodies";
+
 export class Api {
   private router = Router();
 
@@ -40,6 +43,18 @@ export class Api {
         const message = (error as { message: string }).message;
         res.status(400).json({ error: message || "Failed to retrieve results" });
       }
+    });
+
+    this.router.get("/branding", async (_req: Request, res: Response) => {
+      // Always 200 with sane defaults - a branding lookup failure should never break the page.
+      const branding = await Firestore.getBranding().catch((error) => {
+        console.error("Error fetching branding:", error);
+        return null;
+      });
+      res.status(200).json({
+        appName: branding?.appName || DEFAULT_APP_NAME,
+        logoUrl: branding?.logoUrl || null,
+      });
     });
   }
 

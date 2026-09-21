@@ -10,6 +10,7 @@
 
 <script>
 import axios from "axios";
+import { API_BASE_URL } from "../apiBase";
 import { APP_NAME } from "../config";
 
 export default {
@@ -21,7 +22,7 @@ export default {
   },
   async mounted() {
     console.log("Mounted");
-    const firebaseURL = "https://us-central1-summer-bodies.cloudfunctions.net/httpServer/athlete";
+    const firebaseURL = `${API_BASE_URL}/athlete`;
 
     const code = this.$route.query.code;
     if (!code || !this.$route.query.scope) {

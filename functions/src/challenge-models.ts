@@ -47,6 +47,9 @@ export interface ChallengeResults {
   startDate?: number;
   endDate?: number;
   currentTime?: number;
+  // Absent/empty when the streak challenge isn't running for this period - see Bot.publishDailyUpdates /
+  // Bot.publishWeeklyResults.
+  streaks?: StreakState[];
 }
 
 export interface OurEvent {
@@ -66,6 +69,16 @@ export interface OurEvent {
 export interface ContestantFitcoin {
   name: string;
   fitcoin: number;
+}
+
+// Minimum distance (in meters) an On Foot activity must cover to count towards the daily streak challenge.
+export const STREAK_MIN_DISTANCE_M = 1000;
+
+export interface StreakState {
+  athleteId: string;
+  name: string;
+  alive: boolean;
+  currentStreak: number;
 }
 
 export function compareContestantFitcoin(a: ContestantFitcoin, b: ContestantFitcoin) {

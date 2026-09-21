@@ -1,8 +1,8 @@
 import { initializeApp, cert } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { CollectionReference, getFirestore } from "firebase-admin/firestore";
 import * as path from "path";
 import * as fs from "fs";
-import { ContestantFitcoin, compareContestantFitcoin, Athlete } from "./challenge-models";
+import { ContestantFitcoin, compareContestantFitcoin, Athlete, StreakState } from "./challenge-models";
 import moment from "moment";
 import { TokenFromCodeResponse } from "./strava";
 
@@ -10,9 +10,14 @@ import { TokenFromCodeResponse } from "./strava";
 const CUSTOM_SERVICE_ACCOUNT = path.resolve(__dirname, "../../service-account.json");
 
 if (fs.existsSync(CUSTOM_SERVICE_ACCOUNT)) {
-  // If custom service account exists in expected place, use it
+  // If custom service account exists in expected place, use it. storageBucket has to be set explicitly here -
+  // unlike the deployed-on-GCP case below, there's no ambient project config to infer it from. `<project-id>.appspot.com`
+  // is right for projects created before Google's Oct 2024 default-bucket change; a project created after that
+  // defaults to `<project-id>.firebasestorage.app` instead - set FIREBASE_STORAGE_BUCKET to override if so.
   console.log(`Using custom service account: ${CUSTOM_SERVICE_ACCOUNT}`);
-  initializeApp({ credential: cert(CUSTOM_SERVICE_ACCOUNT) });
+  const { project_id } = JSON.parse(fs.readFileSync(CUSTOM_SERVICE_ACCOUNT, "utf8"));
+  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || `${project_id}.appspot.com`;
+  initializeApp({ credential: cert(CUSTOM_SERVICE_ACCOUNT), storageBucket });
 } else {
   // If no custom service account exists this is deployed on GCP and googles sets it for us
   initializeApp();
@@ -20,6 +25,9 @@ if (fs.existsSync(CUSTOM_SERVICE_ACCOUNT)) {
 
 const db = getFirestore();
 const configRef = db.collection("config").doc("config");
+// Kept in its own collection (rather than alongside configRef) so it's trivially safe to expose publicly -
+// nothing in here is ever a secret, unlike SummerBodiesConfig.
+const brandingRef = db.collection("branding").doc("branding");
 
 export class Firestore {
   static async getConfig(): Promise<SummerBodiesConfig> {
@@ -35,13 +43,46 @@ export class Firestore {
     configRef.set(config);
   }
 
+  static async getBranding(): Promise<Branding | null> {
+    const doc = (await brandingRef.get()).data();
+    return (doc as Branding) ?? null;
+  }
+
+  static async uploadBranding(branding: Branding): Promise<void> {
+    await brandingRef.set(branding);
+  }
+
+  private static async writeFitcoinDocs(collection: CollectionReference, contestants: ContestantFitcoin[]): Promise<void> {
+    const batch = db.batch();
+    contestants.forEach((contestant) => batch.set(collection.doc(contestant.name), { fitcoin: contestant.fitcoin }));
+    await batch.commit();
+  }
+
   static async storeFitcoin(fitcoinsContestants: ContestantFitcoin[], date: Date): Promise<void> {
-    const collection = db.collection("fitcoin").doc(date.toDateString()).collection("athletes");
-    const promises: Promise<any>[] = [];
-    fitcoinsContestants.forEach((contestant) => {
-      promises.push(collection.doc(contestant.name).set({ fitcoin: contestant.fitcoin }));
-    });
-    await Promise.all(promises);
+    await this.writeFitcoinDocs(db.collection("fitcoin").doc(date.toDateString()).collection("athletes"), fitcoinsContestants);
+  }
+
+  // Uses a `streak-` prefixed doc id (rather than reusing storeFitcoin's date-keyed doc) so a daily streak
+  // award never collides with a weekly award that happens to land on the same calendar day.
+  static async storeStreakFitcoin(fitcoinsContestants: ContestantFitcoin[], dateString: string): Promise<void> {
+    await this.writeFitcoinDocs(db.collection("fitcoin").doc(`streak-${dateString}`).collection("athletes"), fitcoinsContestants);
+  }
+
+  // Scoped under the challenge's start date (like fitcoin/<date>/athletes/<name> above) so a new challenge run
+  // - a new year's challengeStartDate - starts every athlete fresh, instead of inheriting a prior run's
+  // `alive: false` and staying permanently eliminated.
+  static async getStreaks(challengeStartDate: string): Promise<Map<string, StreakState>> {
+    const docs = await db.collection("streaks").doc(challengeStartDate).collection("athletes").get();
+    const streaks = new Map<string, StreakState>();
+    docs.forEach((doc) => streaks.set(doc.id, doc.data() as StreakState));
+    return streaks;
+  }
+
+  static async saveStreaks(challengeStartDate: string, streaks: StreakState[]): Promise<void> {
+    const collection = db.collection("streaks").doc(challengeStartDate).collection("athletes");
+    const batch = db.batch();
+    streaks.forEach((streak) => batch.set(collection.doc(streak.athleteId), streak));
+    await batch.commit();
   }
 
   static async getFitcoinTotals(): Promise<ContestantFitcoin[]> {
@@ -132,4 +173,14 @@ export interface SummerBodiesConfig {
   stravaRefreshToken: string;
   stravaClientSecret: string;
   stravaClubs: string[];
+  // Inclusive UTC calendar dates ("YYYY-MM-DD") bounding the streak challenge.
+  challengeStartDate: string;
+  challengeEndDate: string;
+}
+
+// Public-safe (no secrets) white-labeling for the website - see api.ts's GET /branding and
+// functions/examples/upload-branding.ts.
+export interface Branding {
+  appName: string;
+  logoUrl: string;
 }
