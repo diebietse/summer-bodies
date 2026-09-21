@@ -2,86 +2,113 @@ import { Firestore, SummerBodiesConfig } from "./firestore";
 import { GetAllAthletesActivitiesResult, Strava } from "./strava";
 import { Slack } from "./slack";
 import { Format } from "./format";
-import { AthleteWithActivities, ChallengeResults, ContestantFitcoin, StreakState } from "./challenge-models";
+import { AthleteWithActivities, ChallengeResults, ContestantFitcoin, RegisteredAthlete, StreakState } from "./challenge-models";
 import { Challenge } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
 import { currentWeekUnix, getPreviousWeek, previousWeekUnix, now, nextWeekUnix, nowPretty, lastWeekPretty, todayUnix, weekDateStrings } from "./util";
+import { reportError } from "./errorReporting";
 import crypto from "crypto";
 
 export class Bot {
-  static async publishDailyUpdates() {
-    const config = await Firestore.getConfig();
-    const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
-    await Firestore.updateRefreshToken(newToken.refresh_token);
-    const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
-    const slack = new Slack(config.slackWebhookUrl, config.slackChannelDaily);
-
-    const currentWeek = currentWeekUnix();
-    const timeNow = now();
-    const nextWeek = nextWeekUnix();
-    const allActivities = await this.getAllStravaAthletesActivities(strava, currentWeek, timeNow);
-
-    if (allActivities.error) {
-      await slack.post(`Error: Could not get all athletes' activities, will try again later`);
-      return;
+  // Runs a scheduled job, reporting any uncaught failure (Puppeteer, Firestore, a bad Strava response, ...)
+  // instead of just failing the invocation silently - see errorReporting.ts.
+  private static async runScheduledJob(name: string, job: () => Promise<void>): Promise<void> {
+    try {
+      await job();
+    } catch (error) {
+      await reportError(`${name} failed`, error);
     }
+  }
 
-    const results = Challenge.calculateResults(allActivities.athletesWithActivities);
-    const id = crypto.randomUUID();
+  static async publishDailyUpdates() {
+    await this.runScheduledJob("publishDailyUpdates", async () => {
+      const config = await Firestore.getConfig();
+      const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
+      await Firestore.updateRefreshToken(newToken.refresh_token);
+      const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
+      const slack = new Slack(config.slackWebhookUrl, config.slackChannelDaily);
 
-    results.startDate = currentWeek;
-    results.endDate = nextWeek;
-    results.currentTime = timeNow;
-    results.streaks = await this.previewStreaks(config, allActivities.athletesWithActivities, currentWeek);
-    await Firestore.storeResults(id, JSON.stringify(results));
+      const currentWeek = currentWeekUnix();
+      const timeNow = now();
+      const nextWeek = nextWeekUnix();
+      const allActivities = await this.getAllStravaAthletesActivities(strava, currentWeek, timeNow);
 
-    const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
-    const screenshot = await Puppeteer.screenshot(`${resultsUrl}?screenshot=true`);
+      if (allActivities.error) {
+        await slack.post(`Error: Could not get all athletes' activities, will try again later`);
+        await reportError(
+          "publishDailyUpdates: could not get all athletes' Strava activities",
+          new Error("getAllAthletesActivities returned error: true"),
+          config,
+        );
+        return;
+      }
 
-    // Upload screenshot to Firebase Storage
-    const screenshotFileName = `daily-update-${id}`;
-    const screenshotUrl = await uploadPngToStorage(screenshot, screenshotFileName);
-    console.log(`Screenshot uploaded to: ${screenshotUrl}`);
+      const results = Challenge.calculateResults(allActivities.athletesWithActivities);
+      const id = crypto.randomUUID();
 
-    await this.publishInProgress(slack, resultsUrl, screenshotUrl);
+      results.startDate = currentWeek;
+      results.endDate = nextWeek;
+      results.currentTime = timeNow;
+      results.streaks = await this.previewStreaks(config, allActivities.athletesWithActivities, currentWeek);
+      results.athletes = this.mapRegisteredAthletes(allActivities.athletesWithActivities);
+      await Firestore.storeResults(id, JSON.stringify(results));
+
+      const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
+      const screenshot = await Puppeteer.screenshot(`${resultsUrl}?screenshot=true`);
+
+      // Upload screenshot to Firebase Storage
+      const screenshotFileName = `daily-update-${id}`;
+      const screenshotUrl = await uploadPngToStorage(screenshot, screenshotFileName);
+      console.log(`Screenshot uploaded to: ${screenshotUrl}`);
+
+      await this.publishInProgress(slack, resultsUrl, screenshotUrl);
+    });
   }
 
   static async publishWeeklyResults() {
-    const config = await Firestore.getConfig();
-    const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
-    const slack = new Slack(config.slackWebhookUrl, config.slackChannelWeekly);
+    await this.runScheduledJob("publishWeeklyResults", async () => {
+      const config = await Firestore.getConfig();
+      const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
+      const slack = new Slack(config.slackWebhookUrl, config.slackChannelWeekly);
 
-    const previousWeek = previousWeekUnix();
-    const currentWeek = currentWeekUnix();
-    const timeNow = now();
-    const allActivities = await this.getAllStravaAthletesActivities(strava, previousWeek, currentWeek);
+      const previousWeek = previousWeekUnix();
+      const currentWeek = currentWeekUnix();
+      const timeNow = now();
+      const allActivities = await this.getAllStravaAthletesActivities(strava, previousWeek, currentWeek);
 
-    if (allActivities.error) {
-      await slack.post(`Error: Could not get all athletes' activities, will try again later`);
-      return;
-    }
+      if (allActivities.error) {
+        await slack.post(`Error: Could not get all athletes' activities, will try again later`);
+        await reportError(
+          "publishWeeklyResults: could not get all athletes' Strava activities",
+          new Error("getAllAthletesActivities returned error: true"),
+          config,
+        );
+        return;
+      }
 
-    const results = Challenge.calculateResults(allActivities.athletesWithActivities);
-    const id = crypto.randomUUID();
+      const results = Challenge.calculateResults(allActivities.athletesWithActivities);
+      const id = crypto.randomUUID();
 
-    results.startDate = previousWeek;
-    results.endDate = currentWeek;
-    results.currentTime = timeNow;
-    results.streaks = await this.finalizeStreaks(config, allActivities.athletesWithActivities, previousWeek, currentWeek);
-    await Firestore.storeResults(id, JSON.stringify(results));
+      results.startDate = previousWeek;
+      results.endDate = currentWeek;
+      results.currentTime = timeNow;
+      results.streaks = await this.finalizeStreaks(config, allActivities.athletesWithActivities, previousWeek, currentWeek);
+      results.athletes = this.mapRegisteredAthletes(allActivities.athletesWithActivities);
+      await Firestore.storeResults(id, JSON.stringify(results));
 
-    const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
-    const screenshot = await Puppeteer.screenshot(`${resultsUrl}?screenshot=true`);
+      const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
+      const screenshot = await Puppeteer.screenshot(`${resultsUrl}?screenshot=true`);
 
-    // Upload screenshot to Firebase Storage
-    const screenshotFileName = `weekly-results-${id}`;
-    const screenshotUrl = await uploadPngToStorage(screenshot, screenshotFileName);
-    console.log(`Screenshot uploaded to: ${screenshotUrl}`);
+      // Upload screenshot to Firebase Storage
+      const screenshotFileName = `weekly-results-${id}`;
+      const screenshotUrl = await uploadPngToStorage(screenshot, screenshotFileName);
+      console.log(`Screenshot uploaded to: ${screenshotUrl}`);
 
-    await this.publishFinal(slack, resultsUrl, screenshotUrl);
-    await this.publishWeeklyFitcoin(slack, results);
-    await this.publishTotalFitcoin(slack);
+      await this.publishFinal(slack, resultsUrl, screenshotUrl);
+      await this.publishWeeklyFitcoin(slack, results);
+      await this.publishTotalFitcoin(slack);
+    });
   }
 
   // Shared by previewStreaks/finalizeStreaks below: clamps `dates` to the challenge window, loads the persisted
@@ -140,6 +167,13 @@ export class Bot {
     ]);
 
     return updatedStreaks;
+  }
+
+  // Derived from the athletes already fetched for the results above - no extra Firestore round-trip.
+  private static mapRegisteredAthletes(athletes: AthleteWithActivities[]): RegisteredAthlete[] {
+    return athletes
+      .map((athlete) => ({ name: `${athlete.firstname} ${athlete.lastname}`, club: athlete.club }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   private static async getAllStravaAthletesActivities(

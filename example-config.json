@@ -1,5 +1,4 @@
 {
-  "stravaClubs": ["exampleClub1", "exampleClub2"],
   "stravaBotId": "strava-bot-id",
   "stravaRefreshToken": "strava-oauth-refresh-token",
   "stravaClientSecret": "strava-oauth-client-secrets",
@@ -7,6 +6,7 @@
   "slackWebhookUrl": "slack-webhook-URL",
   "slackChannelDaily": "#summerbodies-stats",
   "slackChannelWeekly": "#summerbodies",
+  "slackChannelErrors": "#summerbodies-errors",
   "challengeStartDate": "2026-10-05",
   "challengeEndDate": "2026-11-01"
 }

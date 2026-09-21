@@ -150,6 +150,21 @@ export class Firestore {
     await Promise.all(athletes.map((athlete) => db.collection("athletes").doc(athlete.id.toString()).update({ refreshToken: athlete.refreshToken })));
   }
 
+  // Deletes an athlete's registration (profile + refresh token) and, if given, their doc in the current
+  // challenge's streak collection - see functions/examples/remove-athlete.ts. Used to honor a deauthorization
+  // or data-deletion request (see the Strava API Agreement's termination clause on deleting Strava Data), and
+  // doubles as the fix for a revoked/invalid refresh token, which otherwise fails every future Strava fetch for
+  // that athlete and, since getAllAthletesActivities treats one athlete's failure as a whole-batch failure,
+  // blocks daily/weekly results generation for everyone until the athlete is removed.
+  static async removeAthlete(athleteId: string, challengeStartDate?: string): Promise<void> {
+    const batch = db.batch();
+    batch.delete(db.collection("athletes").doc(athleteId));
+    if (challengeStartDate) {
+      batch.delete(db.collection("streaks").doc(challengeStartDate).collection("athletes").doc(athleteId));
+    }
+    await batch.commit();
+  }
+
   static async storeResults(id: string, results: string): Promise<void> {
     await db.collection("results").doc(id).set({ result: results });
   }
@@ -168,11 +183,13 @@ export interface SummerBodiesConfig {
   slackWebhookUrl: string;
   slackChannelDaily: string;
   slackChannelWeekly: string;
+  // Where unexpected backend errors get reported - see errorReporting.ts. Optional so existing deployments
+  // without it don't break; error reporting is just skipped if unset.
+  slackChannelErrors?: string;
   stravaBotId: string;
   stravaClientId: string;
   stravaRefreshToken: string;
   stravaClientSecret: string;
-  stravaClubs: string[];
   // Inclusive UTC calendar dates ("YYYY-MM-DD") bounding the streak challenge.
   challengeStartDate: string;
   challengeEndDate: string;
@@ -183,4 +200,5 @@ export interface SummerBodiesConfig {
 export interface Branding {
   appName: string;
   logoUrl: string;
+  faviconUrl?: string;
 }

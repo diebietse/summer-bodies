@@ -29,18 +29,18 @@ Achieve a position on the leader boards at the end of each week and earn FitCoin
 
 ## Streak Challenge
 
-Log at least 1km of an On Foot activity (Run/Walk/Hike) every single day between `challengeStartDate` and `challengeEndDate`. Missing a day eliminates you for the rest of the challenge. Everyone still in earns 1 FitCoin for each day survived, and a daily update of who's still in is posted to `slackChannelDaily`.
+Log at least 1km of an On Foot activity (Run/Walk/Hike) every single day between `challengeStartDate` and `challengeEndDate`. Missing a day eliminates you for the rest of the challenge, once that week's Sunday 23:59 upload deadline has passed. Everyone still in earns 1 FitCoin for each day survived. Status is shown on the results page, not posted to Slack.
 
 ## Configuration
 
 | Configuration Item | Description                                                      |
 | ------------------ | ---------------------------------------------------------------- |
 | slackWebhookUrl    | Set the [Slack Webhook][slack-webhooks] URL to post messages to. |
+| slackChannelErrors | Optional - Slack channel unexpected backend errors are posted to |
 | stravaBotId        | Name of the Strava bot account                                   |
 | stravaClientId     | Strava OAuth ID of the bot account                               |
 | stravaRefreshToken | Strava OAuth refresh token of the bot account                    |
 | stravaClientSecret | Strava OAuth client secret token of the bot account              |
-| stravaClubs        | Array of Strava clubs to monitor                                 |
 | challengeStartDate | Inclusive UTC start date (`YYYY-MM-DD`) of the streak challenge  |
 | challengeEndDate   | Inclusive UTC end date (`YYYY-MM-DD`) of the streak challenge    |
 
@@ -69,6 +69,18 @@ npm run ts ./examples/create-strava-token.ts -- --clientId <your-client-id> --cl
 
 Authorize the OAuth login of the strava account you want to give access and you will get the refresh token
 
+## Removing an Athlete
+
+If an athlete revokes access on Strava's side, or asks to have their data removed, run [remove-athlete.ts][remove-athlete] to delete their registration (profile + stored refresh token) and current-challenge streak doc:
+
+```console
+npm run ts ./examples/remove-athlete.ts -- --id 12345
+# or
+npm run ts ./examples/remove-athlete.ts -- --name "First Last"
+```
+
+This also fixes the more common reason to need it: a revoked or otherwise invalid refresh token fails that one athlete's Strava fetch, and since a single athlete's failure fails the whole batch (see `getAllAthletesActivities` in [bot.ts][bot]), daily/weekly results generation silently stops for everyone until the athlete is removed.
+
 ## Local Dev
 
 For local development, service account credentials can be created by following [getting started][getting-started] Google guide. Generate JSON service account credentials. Place the credentials in the project root directory and ensure it is named `service-account.json`.
@@ -83,6 +95,8 @@ For local development, service account credentials can be created by following [
 [strava-api-settings]: https://www.strava.com/settings/api
 [upload-config]: functions/examples/upload-config.ts
 [upload-branding]: functions/examples/upload-branding.ts
+[remove-athlete]: functions/examples/remove-athlete.ts
+[bot]: functions/src/bot.ts
 [website-readme]: website/README.md
 [create-strava-token]: functions/examples/create-strava-token.ts
 [strava-dev]: https://developers.strava.com/docs/getting-started/#account

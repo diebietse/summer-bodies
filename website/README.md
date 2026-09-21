@@ -42,36 +42,35 @@ overlay folder — the single source of truth is Firestore, set once via
 
 ```bash
 # from functions/
-npm run ts ./examples/upload-branding.ts -- --appName "My Challenge" --logo ./my-logo.svg
+npm run ts ./examples/upload-branding.ts -- --appName "My Challenge" --logo ./my-logo.svg --favicon ./favicon.ico
 ```
 
-This uploads the logo to Firebase Storage and stores the app name and logo
-URL in Firestore for your project.
+`--favicon` is optional. This uploads the logo (and favicon, if given) to
+Firebase Storage and stores the app name and asset URLs in Firestore for
+your project.
 
 `npm run build` (`scripts/fetch-branding.mjs`) fetches that branding at
 **build time** — not in the browser — via the deployed `GET /branding`
 endpoint, and applies it only for that build:
 
 - Writes `VITE_APP_NAME` into a temporary `.env.local`
-- Downloads the logo over `src/assets/logo.svg`
+- Downloads the logo over `src/assets/logo.svg`, and the favicon (if set)
+  over `public/favicon.ico`
 - Runs `vite build`
-- Restores the generic `.env.local`/`logo.svg` afterward, regardless of
-  whether the build succeeds or fails — the working tree is never left
-  dirty
+- Restores the generic `.env.local`/`logo.svg`/`favicon.ico` afterward,
+  regardless of whether the build succeeds or fails — the working tree is
+  never left dirty
 
 Branding has to be baked in at build time (into the static `index.html`
-`<title>` and the bundled logo), not fetched by the browser after the page
-loads, so that link unfurlers (Slack, WhatsApp, etc.) — which read the raw
-HTML and never run JavaScript — see the correct name and logo.
+`<title>`, favicon link, and the bundled logo), not fetched by the browser
+after the page loads, so that link unfurlers (Slack, WhatsApp, etc.) — which
+read the raw HTML and never run JavaScript — see the correct name, logo,
+and icon.
 
 If Firestore has no branding configured, or the fetch fails (e.g. no
 network), the build falls back to the generic defaults: the `VITE_APP_NAME`
-environment variable (see `src/config.js`, defaulting to "Summer Bodies" via
-the committed `.env`) and the committed `src/assets/logo.svg`.
-
-Note: the favicon (`public/favicon.ico`) isn't covered by this — it's a
-static file with no per-deployment branding, the same as it always has
-been.
+environment variable (see `src/config.js`, defaulting to "Summer Bodies Challenge"
+via the committed `.env`) and the committed `src/assets/logo.svg`/`public/favicon.ico`.
 
 [upload-branding]: ../functions/examples/upload-branding.ts
 

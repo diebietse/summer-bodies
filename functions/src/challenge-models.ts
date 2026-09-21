@@ -41,6 +41,11 @@ export interface GoalResult {
   fitcoin: number;
 }
 
+export interface RegisteredAthlete {
+  name: string;
+  club: string;
+}
+
 export interface ChallengeResults {
   topResults: ChallengeEvent[];
   goalResults: GoalResult[];
@@ -50,6 +55,7 @@ export interface ChallengeResults {
   // Absent/empty when the streak challenge isn't running for this period - see Bot.publishDailyUpdates /
   // Bot.publishWeeklyResults.
   streaks?: StreakState[];
+  athletes?: RegisteredAthlete[];
 }
 
 export interface OurEvent {

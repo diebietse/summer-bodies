@@ -5,7 +5,7 @@
       <span v-if="isResultsInProgress"> In progress results for {{ formatDateRange() }}<br />Results generated on {{ currentDateFormatted }} </span>
       <span v-else> Final results for {{ formatDateRange() }} </span>
       <br />
-      <img alt="Powered by Strava" src="../assets/strava_powered_by_horiz.svg" />
+      <img class="strava-badge" alt="Powered by Strava" src="../assets/strava_powered_by_horiz.svg" />
     </h1>
 
     <!-- Loading indicator -->
@@ -34,7 +34,10 @@
             <button class="nav-link" :class="{ active: activeTab === 'goals' }" @click="activeTab = 'goals'" type="button">Goal Achievements</button>
           </li>
           <li v-if="hasStreaks" class="nav-item" role="presentation">
-            <button class="nav-link" :class="{ active: activeTab === 'streak' }" @click="activeTab = 'streak'" type="button">🏃 Streak Challenge</button>
+            <button class="nav-link" :class="{ active: activeTab === 'streak' }" @click="activeTab = 'streak'" type="button">Streak Challenge</button>
+          </li>
+          <li v-if="hasAthletes" class="nav-item" role="presentation">
+            <button class="nav-link" :class="{ active: activeTab === 'athletes' }" @click="activeTab = 'athletes'" type="button">Registered Athletes</button>
           </li>
         </ul>
       </div>
@@ -178,7 +181,7 @@
       <!-- Streak Challenge Tab -->
       <div v-if="activeTab === 'streak' && hasStreaks" class="tab-content">
         <div class="streak-results">
-          <h2 class="section-title">🏃 1km-a-day Streak Challenge</h2>
+          <h2 class="section-title">1km-a-day Streak Challenge</h2>
           <p v-if="isResultsInProgress" class="text-muted text-center mb-4">On track so far this week - not final. Missing a day doesn't eliminate you until this week's Sunday 23:59 upload deadline has passed.</p>
           <p v-else class="text-muted text-center mb-4">This week's result - final.</p>
 
@@ -231,6 +234,34 @@
           </div>
 
           <p class="text-muted mt-3 small text-center">Miss a day of at least 1km on foot and you're out - eliminations are only final once the week's Sunday 23:59 upload deadline has passed.</p>
+        </div>
+      </div>
+
+      <!-- Registered Athletes Tab -->
+      <div v-if="activeTab === 'athletes' && hasAthletes" class="tab-content">
+        <div class="athletes-results">
+          <h2 class="section-title">Registered Athletes ({{ results.athletes.length }})</h2>
+
+          <div class="card">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col">Name</th>
+                      <th scope="col">Club</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="athlete in results.athletes" :key="athlete.name">
+                      <td class="fw-bold">{{ athlete.name }}</td>
+                      <td>{{ athlete.club }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -319,6 +350,9 @@ export default {
     },
     eliminatedCount() {
       return this.sortedStreaks.filter((s) => !s.alive).length;
+    },
+    hasAthletes() {
+      return !!this.results && Array.isArray(this.results.athletes) && this.results.athletes.length > 0;
     },
   },
   methods: {
@@ -424,6 +458,13 @@ export default {
 img {
   width: 350px;
   padding: 20px;
+}
+
+/* Kept smaller than our own logo so the Strava attribution stays subordinate to our branding,
+   per https://developers.strava.com/guidelines/ */
+.strava-badge {
+  width: 150px;
+  padding: 8px;
 }
 
 .results {

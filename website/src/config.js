@@ -1,1 +1,1 @@
-export const APP_NAME = import.meta.env.VITE_APP_NAME || "Summer Bodies";
+export const APP_NAME = import.meta.env.VITE_APP_NAME || "Summer Bodies Challenge";
