@@ -43,7 +43,7 @@
       </div>
 
       <!-- Challenge Results Tab -->
-      <div v-if="activeTab === 'challenges'" class="tab-content">
+      <div v-if="activeTab === 'challenges' || screenshot" class="tab-content">
         <div class="challenge-results">
           <div v-for="challenge in results.topResults" :key="challenge.name" class="challenge-section">
             <h2 class="challenge-title">{{ challenge.name }}</h2>
@@ -59,8 +59,8 @@
                   </div>
                   <div class="card-body p-0">
                     <div class="table-responsive">
-                      <table class="table table-sm mb-0">
-                        <thead class="table-light">
+                      <table class="table table-sm table-hover mb-0">
+                        <thead class="table-dark">
                           <tr>
                             <th scope="col">#</th>
                             <th scope="col">Name</th>
@@ -178,8 +178,9 @@
         </div>
       </div>
 
-      <!-- Streak Challenge Tab -->
-      <div v-if="activeTab === 'streak' && hasStreaks" class="tab-content">
+      <!-- Streak Challenge Tab - also shown in screenshot mode (below Challenge Results), so the daily/weekly
+           Slack screenshot surfaces who's still surviving the 1km-a-day streak, not just the leaderboards. -->
+      <div v-if="hasStreaks && (activeTab === 'streak' || screenshot)" class="tab-content">
         <div class="streak-results">
           <h2 class="section-title">1km-a-day Streak Challenge</h2>
           <p v-if="isResultsInProgress" class="text-muted text-center mb-4">On track so far this week - not final. Missing a day doesn't eliminate you until this week's Sunday 23:59 upload deadline has passed.</p>
@@ -218,7 +219,11 @@
                   </thead>
                   <tbody>
                     <tr v-for="(streak, index) in sortedStreaks" :key="streak.athleteId" :class="streak.alive ? 'table-success' : 'table-light'">
-                      <td>{{ index + 1 }}</td>
+                      <td>
+                        <span class="position-badge" :class="getPositionClass(index)">
+                          {{ index + 1 }}
+                        </span>
+                      </td>
                       <td class="fw-bold">{{ streak.name }}</td>
                       <td>{{ streak.currentStreak }}</td>
                       <td>
@@ -343,7 +348,9 @@ export default {
     },
     sortedStreaks() {
       if (!this.hasStreaks) return [];
-      return [...this.results.streaks].sort((a, b) => b.currentStreak - a.currentStreak);
+      // Athletes eliminated on their very first evaluated day never accumulated any streak days - showing them
+      // as "Eliminated" with 0 days survived reads as a real elimination rather than simply not having started.
+      return [...this.results.streaks].filter((s) => s.currentStreak > 0).sort((a, b) => b.currentStreak - a.currentStreak);
     },
     stillInCount() {
       return this.sortedStreaks.filter((s) => s.alive).length;
@@ -418,6 +425,12 @@ export default {
     },
   },
   async mounted() {
+    // Read regardless of the mockData/fetch path below, so the local preview route can also exercise
+    // screenshot mode (e.g. /preview?screenshot=true) - see website/README.md "Local preview".
+    if (this.$route.query.screenshot) {
+      this.screenshot = true;
+    }
+
     if (this.mockData) return; // handled by the watcher above
 
     this.loading = true;
@@ -428,10 +441,6 @@ export default {
       this.error = "No results ID provided in the URL.";
       this.loading = false;
       return;
-    }
-
-    if (this.$route.query.screenshot) {
-      this.screenshot = true;
     }
 
     try {
@@ -481,13 +490,7 @@ img {
   margin-bottom: 40px;
 }
 
-.challenge-title {
-  color: #2c3e50;
-  margin-bottom: 20px;
-  text-align: center;
-  font-weight: bold;
-}
-
+.challenge-title,
 .section-title {
   color: #2c3e50;
   margin-bottom: 30px;

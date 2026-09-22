@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { Challenge } from "./challenge";
-import { AthleteWithActivities, StreakState, Activity } from "./challenge-models";
+import { ActivityType, AthleteWithActivities, StreakState, Activity } from "./challenge-models";
 
 function athlete(id: string, activities: Partial<Activity>[]): AthleteWithActivities {
   return {
@@ -113,4 +113,28 @@ test("an already eliminated athlete stays eliminated, even if they log a qualify
 
   assert.equal(result.alive, false);
   assert.equal(result.currentStreak, 6);
+});
+
+test("Mile Challenge is omitted when nobody logged a mile-range run, like On Wheels is when nobody rode", () => {
+  const athletes = [athlete("1", [{ type: "Run", distance: 5000, start_date: "2026-10-05T06:00:00Z" }])];
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  assert.equal(
+    topResults.some((event) => event.name === ActivityType.MileChallenge),
+    false,
+  );
+  assert.equal(
+    topResults.some((event) => event.name === ActivityType.OnWheels),
+    false,
+  );
+});
+
+test("Mile Challenge is included once someone logs a mile-range run", () => {
+  const athletes = [athlete("1", [{ type: "Run", distance: 1600, start_date: "2026-10-05T06:00:00Z" }])];
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  assert.equal(
+    topResults.some((event) => event.name === ActivityType.MileChallenge),
+    true,
+  );
 });

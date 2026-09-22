@@ -185,13 +185,17 @@ export class Challenge {
     for (let [event, eventActivities] of events) {
       eventResult.push(this.getEventGroupings(eventActivities, event));
     }
-    eventResult.push(this.getMileChallengeGroupings(activities));
+    // Unlike the Map-based events above, which are naturally absent when nothing qualifies, this needs an
+    // explicit check - otherwise Mile Challenge would always render, with empty tables, when nobody's logged
+    // a mile-range run that week.
+    const mileEvents = activities.filter(this.isMileEvent);
+    if (mileEvents.length > 0) {
+      eventResult.push(this.getMileChallengeGroupings(mileEvents));
+    }
     return eventResult.sort(this.compareStravaEvents);
   }
 
-  private static getMileChallengeGroupings(activities: OurEvent[]): ChallengeEvent {
-    const mileEvents = activities.filter(this.isMileEvent);
-
+  private static getMileChallengeGroupings(mileEvents: OurEvent[]): ChallengeEvent {
     let event: ChallengeEvent = {
       name: ActivityType.MileChallenge,
       groupings: [this.getGroupingTotals(mileEvents, GroupingType.Attempts), this.getGroupingTotals(mileEvents, GroupingType.Pace)],

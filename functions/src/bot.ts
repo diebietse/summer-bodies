@@ -7,7 +7,7 @@ import { Challenge } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
 import { currentWeekUnix, getPreviousWeek, previousWeekUnix, now, nextWeekUnix, nowPretty, lastWeekPretty, todayUnix, weekDateStrings } from "./util";
-import { reportError } from "./errorReporting";
+import { errorMessage, reportError } from "./errorReporting";
 import crypto from "crypto";
 
 export class Bot {
@@ -21,11 +21,25 @@ export class Bot {
     }
   }
 
+  // The bot has its own Strava account (distinct from any athlete's), whose refresh token lives in
+  // config.stravaRefreshToken and is refreshed here once per day. If it's invalid/expired, Strava's raw error
+  // (e.g. `{"resource":"RefreshToken","field":"refresh_token","code":"invalid"}`) doesn't say *whose* token
+  // that is - wrap it so the resulting Slack alert says exactly what's broken and how to fix it.
+  private static async refreshBotToken(config: SummerBodiesConfig): Promise<void> {
+    try {
+      const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
+      await Firestore.updateRefreshToken(newToken.refresh_token);
+    } catch (error) {
+      throw new Error(
+        `The bot's own Strava account refresh token is invalid/expired - re-authorize it via examples/create-strava-token.ts, then save the new token to config.stravaRefreshToken. Underlying error: ${errorMessage(error)}`,
+      );
+    }
+  }
+
   static async publishDailyUpdates() {
     await this.runScheduledJob("publishDailyUpdates", async () => {
       const config = await Firestore.getConfig();
-      const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
-      await Firestore.updateRefreshToken(newToken.refresh_token);
+      await this.refreshBotToken(config);
       const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
       const slack = new Slack(config.slackWebhookUrl, config.slackChannelDaily);
 

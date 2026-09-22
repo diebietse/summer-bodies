@@ -81,7 +81,15 @@ export class Firestore {
   static async saveStreaks(challengeStartDate: string, streaks: StreakState[]): Promise<void> {
     const collection = db.collection("streaks").doc(challengeStartDate).collection("athletes");
     const batch = db.batch();
-    streaks.forEach((streak) => batch.set(collection.doc(streak.athleteId), streak));
+    streaks.forEach((streak) => {
+      // A non-string/empty athleteId here fails Firestore's .doc() with a generic "documentPath must be a
+      // non-empty string" error that doesn't say which athlete or what the bad value was - check explicitly
+      // so a bad athleteId is obvious immediately instead of requiring a debugging session.
+      if (typeof streak.athleteId !== "string" || streak.athleteId.length === 0) {
+        throw new Error(`saveStreaks: invalid athleteId for "${streak.name}": ${JSON.stringify(streak.athleteId)} (typeof ${typeof streak.athleteId}), expected a non-empty string`);
+      }
+      batch.set(collection.doc(streak.athleteId), streak);
+    });
     await batch.commit();
   }
 
@@ -120,7 +128,11 @@ export class Firestore {
     const athletes = await collection.get();
     let res: Athlete[] = [];
     athletes.forEach((doc) => {
-      res.push(doc.data() as Athlete);
+      const data = doc.data() as Athlete;
+      // `id` is coerced to a string defensively: some existing documents may have it stored as a raw number,
+      // and code downstream relies on Athlete.id being a string - e.g. to look it up as a Map key or pass it
+      // to Firestore's .doc(), both of which silently fail or throw for a number.
+      res.push({ ...data, id: String(data.id) });
     });
 
     return res;
@@ -136,7 +148,7 @@ export class Firestore {
   static async storeAthlete(data: TokenFromCodeResponse) {
     const doc = db.collection("athletes").doc(data.athlete.id.toString());
     const athlete = {
-      id: data.athlete.id,
+      id: data.athlete.id.toString(),
       firstname: data.athlete.firstname,
       lastname: data.athlete.lastname,
       profile: data.athlete.profile,

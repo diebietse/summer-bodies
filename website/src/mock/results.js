@@ -129,6 +129,7 @@ export const mockResults = {
     { athleteId: "3", name: "Morgan Reyes", alive: true, currentStreak: 9 },
     { athleteId: "4", name: "Casey Nguyen", alive: false, currentStreak: 8 },
     { athleteId: "5", name: "Taylor Brooks", alive: true, currentStreak: 5 },
+    { athleteId: "6", name: "Jordan Blake", alive: false, currentStreak: 0 },
   ],
   athletes: [
     { name: "Alex Carter", club: "All" },
