@@ -27,15 +27,17 @@ function isGitClean(filePath) {
   }
 }
 
+// Throws on any network/timeout/HTTP failure - the caller must not confuse "couldn't reach the branding
+// endpoint" with "branding legitimately isn't configured" (an empty-but-successful response), since treating
+// a timeout the same as "no branding" would silently ship generic branding to production.
+//
+// The timeout is generous because /branding is served by the same Cloud Function as everything else
+// (functions/src/index.ts bundles Bot, which imports Puppeteer), so a cold start here pays Puppeteer's
+// module load cost even though this route never touches it.
 async function fetchBranding() {
-  try {
-    const response = await fetch(`${API_BASE_URL}/branding`, { signal: AbortSignal.timeout(5000) });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.json();
-  } catch (error) {
-    console.warn(`Could not fetch branding, building with generic defaults: ${error.message}`);
-    return null;
-  }
+  const response = await fetch(`${API_BASE_URL}/branding`, { signal: AbortSignal.timeout(20000) });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return await response.json();
 }
 
 function buildVite() {
@@ -72,7 +74,13 @@ async function applyBranding(branding, assets, updatedPaths) {
 }
 
 async function main() {
-  const branding = await fetchBranding();
+  let branding;
+  try {
+    branding = await fetchBranding();
+  } catch (error) {
+    console.error(`error: could not fetch branding: ${error.message}`);
+    process.exit(1);
+  }
 
   if (!branding?.appName && !branding?.logoUrl && !branding?.faviconUrl) {
     console.log("No branding configured, building with generic defaults.");
