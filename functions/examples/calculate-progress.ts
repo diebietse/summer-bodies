@@ -8,7 +8,6 @@ const activities: AthleteWithActivities[] = [
     id: "some-athlete-id",
     firstname: "John",
     lastname: "Smith",
-    club: "The Best Club",
     profile: "",
     refreshToken: "",
     activities: [

@@ -70,9 +70,9 @@ export class Format {
 
   static athleteTable(athletes: Athlete[]): string {
     const table = new AsciiTable();
-    table.setHeading("NAME", "GROUP");
+    table.setHeading("NAME");
     athletes.forEach((athlete) => {
-      table.addRow(`${athlete.firstname} ${athlete.lastname}`, athlete.club);
+      table.addRow(`${athlete.firstname} ${athlete.lastname}`);
     });
     return table.toString();
   }

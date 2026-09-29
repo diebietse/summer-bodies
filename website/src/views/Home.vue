@@ -12,7 +12,7 @@
     <!-- Image from https://developers.strava.com/guidelines/ -->
     <img type="button" @click="startStravaAuth" alt="Connect with Strava" src="../assets/strava_login.svg" />
 
-    <p class="consent-note">By connecting, your name, club, and activity stats (distance, duration, elevation) will be visible to other registered participants on the results pages and leaderboards.</p>
+    <p class="consent-note">By connecting, your name and activity stats (distance, duration, elevation) will be visible to other registered participants on the results pages and leaderboards.</p>
   </div>
 </template>
 

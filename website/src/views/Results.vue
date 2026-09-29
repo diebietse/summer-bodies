@@ -254,13 +254,11 @@
                   <thead class="table-dark">
                     <tr>
                       <th scope="col">Name</th>
-                      <th scope="col">Club</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr v-for="athlete in results.athletes" :key="athlete.name">
                       <td class="fw-bold">{{ athlete.name }}</td>
-                      <td>{{ athlete.club }}</td>
                     </tr>
                   </tbody>
                 </table>

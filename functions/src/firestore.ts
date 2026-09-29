@@ -153,7 +153,6 @@ export class Firestore {
       lastname: data.athlete.lastname,
       profile: data.athlete.profile,
       refreshToken: data.refresh_token,
-      club: "All",
     };
     await doc.create({ ...athlete });
   }

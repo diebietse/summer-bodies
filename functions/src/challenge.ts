@@ -223,7 +223,6 @@ export class Challenge {
           totalElevationGainM: activity.total_elevation_gain,
           eventName: activity.name,
           type: activity.type.toString(),
-          club: athlete.club,
         };
         if (Challenge.toOurActivity(event.type) == ActivityType.Other) {
           event.movingTimeS = activity.elapsed_time;

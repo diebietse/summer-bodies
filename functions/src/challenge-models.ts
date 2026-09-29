@@ -43,7 +43,6 @@ export interface GoalResult {
 
 export interface RegisteredAthlete {
   name: string;
-  club: string;
 }
 
 export interface ChallengeResults {
@@ -68,7 +67,6 @@ export interface OurEvent {
   totalElevationGainM: number;
   firstName: string;
   lastName: string;
-  club: string;
   eventName: string;
 }
 
@@ -113,7 +111,6 @@ export interface Athlete {
   lastname: string;
   profile: string;
   refreshToken: string;
-  club: string;
 }
 
 export interface AthleteWithActivities extends Athlete {

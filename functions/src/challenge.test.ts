@@ -12,7 +12,6 @@ function athlete(id: string, activities: Partial<Activity>[]): AthleteWithActivi
     lastname: id,
     profile: "",
     refreshToken: "",
-    club: "All",
     activities: activities.map((activity, index) => ({
       id: index,
       name: "Activity",
