@@ -546,6 +546,14 @@ img {
   vertical-align: middle;
 }
 
+/* Name cells never wrap: the Challenge Results grouping cards (Duration/Distance/Elevation) sit side by
+   side with equal widths, but each table sizes its own columns from its own content - so without this, the
+   same name wraps in one card and not another (e.g. a longer unit label like "Elevation" leaves the Name
+   column less room than "Duration" does), making the cards' row heights misaligned. */
+.table td.fw-bold {
+  white-space: nowrap;
+}
+
 .btn-group .btn.active {
   background-color: #0d6efd;
   border-color: #0d6efd;
