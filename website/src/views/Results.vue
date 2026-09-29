@@ -59,7 +59,7 @@
                   </div>
                   <div class="card-body p-0">
                     <div class="table-responsive">
-                      <table class="table table-sm table-hover mb-0">
+                      <table class="table table-sm mb-0">
                         <thead class="table-dark">
                           <tr>
                             <th scope="col">#</th>
@@ -146,7 +146,7 @@
           <div class="card">
             <div class="card-body p-0">
               <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table mb-0">
                   <thead class="table-dark">
                     <tr>
                       <th scope="col">Name</th>
@@ -208,7 +208,7 @@
           <div class="card">
             <div class="card-body p-0">
               <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table mb-0">
                   <thead class="table-dark">
                     <tr>
                       <th scope="col">#</th>
@@ -250,7 +250,7 @@
           <div class="card">
             <div class="card-body p-0">
               <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table mb-0">
                   <thead class="table-dark">
                     <tr>
                       <th scope="col">Name</th>
