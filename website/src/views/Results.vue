@@ -25,7 +25,7 @@
 
     <!-- Main content - only show when not loading and no error -->
     <div v-if="!loading && !error && results">
-      <div v-if="!screenshot" class="nav-tabs-container">
+      <div v-if="!screenshot && !hideTabs" class="nav-tabs-container">
         <ul class="nav nav-tabs justify-content-center" role="tablist">
           <li class="nav-item" role="presentation">
             <button class="nav-link" :class="{ active: activeTab === 'challenges' }" @click="activeTab = 'challenges'" type="button">Challenge Results</button>
@@ -277,6 +277,10 @@ import axios from "axios";
 import { API_BASE_URL } from "../apiBase";
 import { APP_NAME } from "../config";
 
+// Keep in sync with the tab buttons/content blocks in the template - also doubles as the allowlist for the
+// ?tab= query param, so an unrecognized value can't be used to land on a broken/blank state.
+const VALID_TABS = ["challenges", "goals", "streak", "athletes"];
+
 export default {
   name: "Results",
   props: {
@@ -295,6 +299,7 @@ export default {
       activeTab: "challenges",
       goalFilter: "all",
       screenshot: false,
+      hideTabs: false,
       appName: APP_NAME,
     };
   },
@@ -421,12 +426,26 @@ export default {
         this.error = null;
       },
     },
+    // Keeps the URL shareable: whatever tab you're looking at is reflected in ?tab=, so copying the current
+    // URL (or screenshotting it) always lands the recipient on the same tab. `replace` (not `push`) so
+    // switching tabs doesn't spam browser history; skipped when already in sync (e.g. the initial ?tab= read
+    // in mounted() triggers this same watcher) to avoid a redundant no-op navigation.
+    activeTab(newTab) {
+      if (this.$route.query.tab === newTab) return;
+      this.$router.replace({ query: { ...this.$route.query, tab: newTab } }).catch(() => {});
+    },
   },
   async mounted() {
-    // Read regardless of the mockData/fetch path below, so the local preview route can also exercise
-    // screenshot mode (e.g. /preview?screenshot=true) - see website/README.md "Local preview".
+    // Read regardless of the mockData/fetch path below, so the local preview route can also exercise these
+    // modes (e.g. /preview?screenshot=true) - see website/README.md "Local preview".
     if (this.$route.query.screenshot) {
       this.screenshot = true;
+    }
+    if (this.$route.query.hideTabs) {
+      this.hideTabs = true;
+    }
+    if (VALID_TABS.includes(this.$route.query.tab)) {
+      this.activeTab = this.$route.query.tab;
     }
 
     if (this.mockData) return; // handled by the watcher above
