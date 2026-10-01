@@ -426,16 +426,18 @@ export default {
     // themselves (e.g. ?tab=streak for a week with no streak challenge running) - this is the one point
     // guaranteed to run once data is actually available, regardless of whether it arrived via mockData's
     // immediate watcher below (which fires before mounted()) or the real fetch in mounted() (which doesn't).
-    // Leaves activeTab at its "challenges" default for an unrecognized or data-less tab, instead of a blank
-    // page. Must stay listed before mockData: an `immediate` watcher's handler runs as soon as it's
-    // registered, so if mockData came first, its handler would set `results` before this watcher exists to
-    // observe it.
+    // Must stay listed before mockData: an `immediate` watcher's handler runs as soon as it's registered, so
+    // if mockData came first, its handler would set `results` before this watcher existed to observe it.
+    //
+    // Also re-validates the currently active tab, not just the URL's tab, since Preview.vue reuses this same
+    // instance across scenario changes (see the mockData watcher below) - without this, switching to results
+    // with no streak/athlete data while already on that tab would leave activeTab pointing at a tab whose
+    // nav button and content both just stopped rendering.
     results(newResults) {
       if (!newResults) return;
-      const requestedTab = this.$route.query.tab;
-      if (requestedTab === "streak" && !this.hasStreaks) return;
-      if (requestedTab === "athletes" && !this.hasAthletes) return;
-      if (VALID_TABS.includes(requestedTab)) this.activeTab = requestedTab;
+      const candidateTab = VALID_TABS.includes(this.$route.query.tab) ? this.$route.query.tab : this.activeTab;
+      const isAvailable = (candidateTab === "streak" && this.hasStreaks) || (candidateTab === "athletes" && this.hasAthletes) || candidateTab === "challenges" || candidateTab === "goals";
+      this.activeTab = isAvailable ? candidateTab : "challenges";
     },
     // Preview.vue reuses this same instance across scenario changes (same /preview route, just a different
     // query), so mounted() alone would never see a later mockData value - only its first one.
