@@ -185,9 +185,7 @@ export class Bot {
 
   // Derived from the athletes already fetched for the results above - no extra Firestore round-trip.
   private static mapRegisteredAthletes(athletes: AthleteWithActivities[]): RegisteredAthlete[] {
-    return athletes
-      .map((athlete) => ({ name: `${athlete.firstname} ${athlete.lastname}` }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return athletes.map((athlete) => ({ name: `${athlete.firstname} ${athlete.lastname}` })).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   private static async getAllStravaAthletesActivities(

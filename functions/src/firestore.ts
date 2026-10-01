@@ -86,7 +86,9 @@ export class Firestore {
       // non-empty string" error that doesn't say which athlete or what the bad value was - check explicitly
       // so a bad athleteId is obvious immediately instead of requiring a debugging session.
       if (typeof streak.athleteId !== "string" || streak.athleteId.length === 0) {
-        throw new Error(`saveStreaks: invalid athleteId for "${streak.name}": ${JSON.stringify(streak.athleteId)} (typeof ${typeof streak.athleteId}), expected a non-empty string`);
+        throw new Error(
+          `saveStreaks: invalid athleteId for "${streak.name}": ${JSON.stringify(streak.athleteId)} (typeof ${typeof streak.athleteId}), expected a non-empty string`,
+        );
       }
       batch.set(collection.doc(streak.athleteId), streak);
     });
