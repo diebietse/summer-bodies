@@ -59,7 +59,7 @@
                   </div>
                   <div class="card-body p-0">
                     <div class="table-responsive">
-                      <table class="table table-sm mb-0">
+                      <table class="table table-sm mb-0" :class="{ 'grouping-table': challenge.groupings.length > 1 }">
                         <thead class="table-dark">
                           <tr>
                             <th scope="col">#</th>
@@ -567,12 +567,47 @@ img {
   vertical-align: middle;
 }
 
-/* Name cells never wrap: the Challenge Results grouping cards (Duration/Distance/Elevation) sit side by
-   side with equal widths, but each table sizes its own columns from its own content - so without this, the
-   same name wraps in one card and not another (e.g. a longer unit label like "Elevation" leaves the Name
-   column less room than "Duration" does), making the cards' row heights misaligned. */
+/* Name cells never wrap - see the .grouping-table comment below for why this matters for cards that sit
+   side by side. For single-table tabs (Goal Achievements, Streak Challenge, Registered Athletes) it's just
+   a nicer default. */
 .table td.fw-bold {
   white-space: nowrap;
+}
+
+/* The Duration/Distance/Elevation (and Mile Challenge Attempts/Pace) cards sit side by side with equal
+   widths, but a plain table sizes its own columns from its own content - a longer header ("Elevation" vs
+   "Duration") or wider value ("1,240" vs "51") makes that table need more total width than its siblings,
+   overflowing its card into a horizontal scrollbar that the sibling cards don't have. Fixed, identical
+   column proportions make every sibling card the same width regardless of content - Name gets whatever's
+   left after the other three, and overflows into an ellipsis instead of forcing the table wider. Not used
+   for Other's table, which only ever appears alone (no sibling to stay consistent with) and so is left to
+   size itself naturally - see the challenge.groupings.length check in the template. */
+.grouping-table {
+  table-layout: fixed;
+}
+
+.grouping-table th:first-child,
+.grouping-table td:first-child {
+  width: 15%;
+}
+
+.grouping-table th:nth-child(3),
+.grouping-table td:nth-child(3) {
+  width: 30%;
+}
+
+.grouping-table th:last-child,
+.grouping-table td:last-child {
+  width: 22%;
+}
+
+.grouping-table th {
+  white-space: nowrap;
+}
+
+.grouping-table td.fw-bold {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn-group .btn.active {
