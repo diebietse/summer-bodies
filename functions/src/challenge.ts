@@ -42,7 +42,7 @@ export class Challenge {
         for (let contestant of grouping.contestants) {
           // If there was a draw, give contestants the same number of points
           const fitcoin: number = previousContestant?.total === contestant.total ? previousContestant.fitcoin! : fitcoinAwarded;
-          const contestantResult = { name: contestant.name, total: contestant.total, fitcoin: fitcoin };
+          const contestantResult = { name: contestant.name, total: contestant.total, fitcoin: fitcoin, activityTypes: contestant.activityTypes };
           contestantResults.push(contestantResult);
           console.log(`${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`);
           count++;
@@ -264,6 +264,7 @@ export class Challenge {
 
   private static getGroupingTotals(activities: OurEvent[], type: GroupingType): Grouping {
     let contestants = new Map<string, Contestant>();
+    let activityTypes = new Map<string, Set<string>>();
 
     const units = {
       Distance: "km",
@@ -292,9 +293,16 @@ export class Challenge {
       }
 
       contestants.set(activity.athleteId, contestant);
+
+      const types = activityTypes.get(activity.athleteId) ?? new Set<string>();
+      types.add(activity.type);
+      activityTypes.set(activity.athleteId, types);
     });
 
-    let c = Array.from(contestants, ([_name, value]) => value);
+    let c = Array.from(contestants, ([athleteId, value]) => ({
+      ...value,
+      activityTypes: Array.from(activityTypes.get(athleteId) ?? []).sort(),
+    }));
     c = c.sort(this.compareContestant);
     if (type === GroupingType.Pace) c = c.reverse();
 

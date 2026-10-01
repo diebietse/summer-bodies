@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { Challenge } from "./challenge";
-import { ActivityType, AthleteWithActivities, StreakState, Activity } from "./challenge-models";
+import { ActivityType, AthleteWithActivities, GroupingType, StreakState, Activity } from "./challenge-models";
 
 function athlete(id: string, activities: Partial<Activity>[]): AthleteWithActivities {
   return {
@@ -136,4 +136,20 @@ test("Mile Challenge is included once someone logs a mile-range run", () => {
     topResults.some((event) => event.name === ActivityType.MileChallenge),
     true,
   );
+});
+
+test("Other category contestants list the distinct activity types behind their total", () => {
+  const athletes = [
+    athlete("1", [
+      { type: "Yoga", moving_time: 30 * 60, start_date: "2026-10-05T06:00:00Z" },
+      { type: "Golf", moving_time: 60 * 60, start_date: "2026-10-06T06:00:00Z" },
+      { type: "Yoga", moving_time: 30 * 60, start_date: "2026-10-07T06:00:00Z" },
+    ]),
+  ];
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  const other = topResults.find((event) => event.name === ActivityType.Other);
+  const duration = other?.groupings.find((grouping) => grouping.name === GroupingType.Duration);
+
+  assert.deepEqual(duration?.contestants[0].activityTypes, ["Golf", "Yoga"]);
 });

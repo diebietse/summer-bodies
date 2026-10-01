@@ -30,6 +30,9 @@ export interface Contestant {
   name: string;
   total: number;
   fitcoin?: number;
+  // Distinct raw Strava activity types (e.g. "Yoga", "Golf") this contestant logged within the grouping - only
+  // shown for the Other category (Results.vue), where "duration" alone doesn't say what was actually done.
+  activityTypes?: string[];
 }
 
 export interface GoalResult {

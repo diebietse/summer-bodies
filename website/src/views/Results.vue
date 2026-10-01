@@ -49,7 +49,7 @@
             <h2 class="challenge-title">{{ challenge.name }}</h2>
 
             <div class="row justify-content-center">
-              <div v-for="grouping in challenge.groupings" :key="grouping.name" class="col-md-6 col-lg-4 mb-4">
+              <div v-for="grouping in challenge.groupings" :key="grouping.name" class="mb-4" :class="challenge.groupings.length === 1 ? 'col-12 col-md-8 col-lg-6' : 'col-md-6 col-lg-4'">
                 <div class="card h-100">
                   <div class="card-header">
                     <h5 class="card-title mb-0">
@@ -65,6 +65,7 @@
                             <th scope="col">#</th>
                             <th scope="col">Name</th>
                             <th scope="col">{{ grouping.name }}</th>
+                            <th v-if="challenge.name === 'Other'" scope="col">Activities</th>
                             <th scope="col">FitCoin</th>
                           </tr>
                         </thead>
@@ -77,6 +78,7 @@
                             </td>
                             <td class="fw-bold">{{ contestant.name }}</td>
                             <td>{{ formatValue(contestant.total, grouping.unit) }}</td>
+                            <td v-if="challenge.name === 'Other'" class="text-muted small">{{ (contestant.activityTypes || []).join(", ") }}</td>
                             <td>
                               <span class="badge bg-warning text-dark">{{ contestant.fitcoin }}</span>
                             </td>

@@ -83,9 +83,9 @@ export const mockResults = {
           name: "Duration",
           unit: "min",
           contestants: [
-            { name: "Jamie Lee", total: 180, fitcoin: 10 },
-            { name: "Taylor Brooks", total: 150, fitcoin: 9 },
-            { name: "Alex Carter", total: 120, fitcoin: 8 },
+            { name: "Jamie Lee", total: 180, fitcoin: 10, activityTypes: ["Golf", "Yoga"] },
+            { name: "Taylor Brooks", total: 150, fitcoin: 9, activityTypes: ["Crossfit"] },
+            { name: "Alex Carter", total: 120, fitcoin: 8, activityTypes: ["Rowing", "Workout"] },
           ],
         },
       ],
