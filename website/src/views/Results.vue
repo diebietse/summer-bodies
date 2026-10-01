@@ -65,7 +65,7 @@
                             <th scope="col">#</th>
                             <th scope="col">Name</th>
                             <th scope="col">{{ grouping.name }}</th>
-                            <th v-if="challenge.name === 'Other'" scope="col">Activities</th>
+                            <th v-if="challenge.name === otherCategory" scope="col">Activities</th>
                             <th scope="col">FitCoin</th>
                           </tr>
                         </thead>
@@ -78,7 +78,7 @@
                             </td>
                             <td class="fw-bold">{{ contestant.name }}</td>
                             <td>{{ formatValue(contestant.total, grouping.unit) }}</td>
-                            <td v-if="challenge.name === 'Other'" class="text-muted small">{{ (contestant.activityTypes || []).join(", ") }}</td>
+                            <td v-if="challenge.name === otherCategory" class="text-muted small">{{ (contestant.activityTypes || []).join(", ") }}</td>
                             <td>
                               <span class="badge bg-warning text-dark">{{ contestant.fitcoin }}</span>
                             </td>
@@ -283,6 +283,10 @@ import { APP_NAME } from "../config";
 // ?tab= query param, so an unrecognized value can't be used to land on a broken/blank state.
 const VALID_TABS = ["challenges", "goals", "streak", "athletes"];
 
+// Matches ActivityType.Other's value in functions/src/challenge-models.ts - kept as a local constant rather
+// than importing across the website/functions package boundary for one string.
+const OTHER_CATEGORY = "Other";
+
 export default {
   name: "Results",
   props: {
@@ -303,6 +307,7 @@ export default {
       screenshot: false,
       hideTabs: false,
       appName: APP_NAME,
+      otherCategory: OTHER_CATEGORY,
     };
   },
   computed: {
@@ -417,6 +422,21 @@ export default {
     },
   },
   watch: {
+    // Resolves ?tab= here rather than in mounted(), since whether a tab is valid depends on the results
+    // themselves (e.g. ?tab=streak for a week with no streak challenge running) - this is the one point
+    // guaranteed to run once data is actually available, regardless of whether it arrived via mockData's
+    // immediate watcher below (which fires before mounted()) or the real fetch in mounted() (which doesn't).
+    // Leaves activeTab at its "challenges" default for an unrecognized or data-less tab, instead of a blank
+    // page. Must stay listed before mockData: an `immediate` watcher's handler runs as soon as it's
+    // registered, so if mockData came first, its handler would set `results` before this watcher exists to
+    // observe it.
+    results(newResults) {
+      if (!newResults) return;
+      const requestedTab = this.$route.query.tab;
+      if (requestedTab === "streak" && !this.hasStreaks) return;
+      if (requestedTab === "athletes" && !this.hasAthletes) return;
+      if (VALID_TABS.includes(requestedTab)) this.activeTab = requestedTab;
+    },
     // Preview.vue reuses this same instance across scenario changes (same /preview route, just a different
     // query), so mounted() alone would never see a later mockData value - only its first one.
     mockData: {
@@ -445,9 +465,6 @@ export default {
     }
     if (this.$route.query.hideTabs) {
       this.hideTabs = true;
-    }
-    if (VALID_TABS.includes(this.$route.query.tab)) {
-      this.activeTab = this.$route.query.tab;
     }
 
     if (this.mockData) return; // handled by the watcher above
