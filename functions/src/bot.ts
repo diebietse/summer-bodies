@@ -18,6 +18,7 @@ import {
   weekDateStrings,
 } from "./util";
 import { errorMessage, reportError, reportWarning } from "./errorReporting";
+import { checkWebhookLiveness, getAthletesActivitiesFromStore, sweepStuckWebhookEvents, syncActivitiesIntoStore } from "./activityStore";
 import crypto from "crypto";
 
 export class Bot {
@@ -63,43 +64,33 @@ export class Bot {
     );
   }
 
+  // Reads from the webhook-fed activity store (see activityStore.ts) instead of polling every athlete's
+  // Strava activities live - that daily live poll is exactly what Strava's capacity review flagged. The
+  // weekly job (below) still polls live, once a week, and makes the store match that poll (see
+  // reconcileActivityStore).
   static async publishDailyUpdates() {
     await this.runScheduledJob("publishDailyUpdates", async () => {
       const config = await Firestore.getConfig();
       await this.refreshBotToken(config);
-      const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
+      await checkWebhookLiveness(config);
+      await sweepStuckWebhookEvents(config);
       const slack = new Slack(config.slackWebhookUrl, config.slackChannelDaily);
 
       const currentWeek = currentWeekUnix();
       const timeNow = now();
       const nextWeek = nextWeekUnix();
-      const allActivities = await this.getAllStravaAthletesActivities(strava, currentWeek, timeNow);
+      // Same duplicate handling as the weekly results (see getAllStravaAthletesActivities), silently - the weekly
+      // results report any ignored duplicates.
+      const { athletes: athletesWithActivities } = Challenge.removeDuplicateActivities(await getAthletesActivitiesFromStore(currentWeek, timeNow));
 
-      // Unlike the weekly results, a daily update is only a preview, so carry on without any athlete whose
-      // fetch failed (e.g. a revoked token) and flag them in the errors channel instead - unless nobody
-      // could be fetched, which points at Strava itself rather than at one athlete. Skipped athletes are also
-      // missing from that day's streak preview and athlete list - accepted, since nothing here is persisted and
-      // the weekly results (all-or-nothing) are what count.
-      if (allActivities.error) {
-        if (allActivities.athletesWithActivities.length === 0) {
-          await this.reportFailedActivitiesFetch("publishDailyUpdates", allActivities, config);
-          return;
-        }
-        await reportWarning(
-          "publishDailyUpdates: skipped athletes whose Strava activities could not be fetched",
-          allActivities.failedAthletes.join(", "),
-          config,
-        );
-      }
-
-      const results = Challenge.calculateResults(allActivities.athletesWithActivities);
+      const results = Challenge.calculateResults(athletesWithActivities);
       const id = crypto.randomUUID();
 
       results.startDate = currentWeek;
       results.endDate = nextWeek;
       results.currentTime = timeNow;
-      results.streaks = await this.previewStreaks(config, allActivities.athletesWithActivities, currentWeek);
-      results.athletes = this.mapRegisteredAthletes(allActivities.athletesWithActivities);
+      results.streaks = await this.previewStreaks(config, athletesWithActivities, currentWeek);
+      results.athletes = this.mapRegisteredAthletes(athletesWithActivities);
       await Firestore.storeResults(id, JSON.stringify(results));
 
       const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
@@ -132,6 +123,8 @@ export class Bot {
           config,
         );
       }
+
+      await this.reconcileActivityStore(allActivities.polledAthletes, previousWeek, currentWeek, config);
 
       const results = Challenge.calculateResults(allActivities.athletesWithActivities);
       const id = crypto.randomUUID();
@@ -167,8 +160,8 @@ export class Bot {
     return { previousStreaks, updatedStreaks };
   }
 
-  // Non-authoritative preview of the streak challenge for the in-progress results page, using activities already
-  // fetched for it above - no extra Strava call. Only previews up to yesterday, since today's upload window is
+  // Non-authoritative preview of the streak challenge for the in-progress results page, using the activities the
+  // daily update already read from the store. Only previews up to yesterday, since today's upload window is
   // still open. Nothing is persisted here - see finalizeStreaks for the once-a-week authoritative version.
   private static async previewStreaks(config: SummerBodiesConfig, athletes: AthleteWithActivities[], weekStartUnix: number): Promise<StreakState[]> {
     const result = await this.computeStreakUpdates(config, athletes, weekDateStrings(weekStartUnix, todayUnix()));
@@ -184,7 +177,9 @@ export class Bot {
   // Known limitation: if getAllStravaAthletesActivities fails for this week, publishWeeklyResults returns before
   // this ever runs, and - since only the current week's dates are ever evaluated - that week's streak days are
   // never retried later. This mirrors how a failed week already skips the leaderboard/goal scoring entirely
-  // elsewhere in this file; there's no backfill mechanism for any of it.
+  // elsewhere in this file; there's no backfill mechanism for any of it. The webhook's athlete-deauthorization
+  // handling should make the usual cause (one athlete's revoked/invalid token blocking the whole batch) far
+  // less common than it was before webhooks.
   private static async finalizeStreaks(
     config: SummerBodiesConfig,
     athletes: AthleteWithActivities[],
@@ -214,6 +209,30 @@ export class Bot {
     return updatedStreaks;
   }
 
+  // Makes the webhook-fed activity store match a live poll of the same window - see
+  // activityStore.syncActivitiesIntoStore. Runs before the week's results are scored (from the same poll). Anything
+  // the webhooks missed is reported, as a sign they aren't arriving (see also checkWebhookLiveness). A failure is
+  // reported too, but doesn't stop the results: they're scored from the poll, not the store.
+  private static async reconcileActivityStore(
+    athletes: AthleteWithActivities[],
+    startUnix: number,
+    endUnix: number,
+    config: SummerBodiesConfig,
+  ): Promise<void> {
+    try {
+      const { missed, removed } = await syncActivitiesIntoStore(athletes, startUnix, endUnix);
+      if (missed.length > 0 || removed.length > 0) {
+        await reportWarning(
+          `Strava webhooks missed ${missed.length} new activities and ${removed.length} removals last week (now fixed in the activity store)`,
+          [...missed.map((m) => `missed: ${m.athleteName} ${m.activityId} (${m.startDate})`), ...removed.map((id) => `removed: ${id}`)].join("\n"),
+          config,
+        );
+      }
+    } catch (error) {
+      await reportError("Couldn't reconcile the activity store with last week's live poll", error, config);
+    }
+  }
+
   // Derived from the athletes already fetched for the results above - no extra Firestore round-trip.
   private static mapRegisteredAthletes(athletes: AthleteWithActivities[]): RegisteredAthlete[] {
     return athletes.map((athlete) => ({ name: `${athlete.firstname} ${athlete.lastname}` })).sort((a, b) => a.name.localeCompare(b.name));
@@ -223,16 +242,23 @@ export class Bot {
     strava: Strava,
     startUnixTime: number,
     endUnixTime: number,
-  ): Promise<GetAllAthletesActivitiesResult & { ignoredDuplicates: IgnoredDuplicate[] }> {
+  ): Promise<GetAllAthletesActivitiesResult & { ignoredDuplicates: IgnoredDuplicate[]; polledAthletes: AthleteWithActivities[] }> {
     const started = Date.now();
     const athletes = await Firestore.getRegisteredAthletes();
-    const results = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
+    const results = await strava.getAllAthletesActivities(
+      athletes,
+      startUnixTime,
+      endUnixTime,
+      async (id) => (await Firestore.getAthlete(id))?.refreshToken,
+    );
     console.log(`Fetched ${athletes.length} athletes' Strava activities in ${((Date.now() - started) / 1000).toFixed(1)} s`);
     // Strava rotates the refresh token on every use, so persist the new one for everyone who was fetched
     // successfully - even when others failed and the caller discards the result.
     await Firestore.updateAthletesRefreshToken(results.athletesWithActivities);
     const { athletes: deduplicated, ignored } = Challenge.removeDuplicateActivities(results.athletesWithActivities);
-    return { ...results, athletesWithActivities: deduplicated, ignoredDuplicates: ignored };
+    // polledAthletes keeps every recording, duplicates included, for the activity store - which holds whatever Strava
+    // has (the webhooks store both recordings too) and drops duplicates only when scoring, like this does.
+    return { ...results, athletesWithActivities: deduplicated, ignoredDuplicates: ignored, polledAthletes: results.athletesWithActivities };
   }
 
   // Screenshots each section of the results page separately (streak, goals, challenges) and uploads them to

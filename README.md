@@ -44,6 +44,8 @@ Log at least 1km of an On Foot activity (Run/Walk/Hike) every single day between
 | challengeStartDate | Inclusive SAST start date (`YYYY-MM-DD`) of the streak challenge |
 | challengeEndDate   | Inclusive SAST end date (`YYYY-MM-DD`) of the streak challenge   |
 
+`stravaWebhookVerifyToken`, `stravaWebhookPathSecret` and `stravaWebhookSubscriptionId` are also stored in the config, but set by [manage-strava-webhook.ts][manage-strava-webhook] `--create` rather than by hand - see [Strava Webhook](#strava-webhook). [upload-config.ts][upload-config] merges into the stored config, so re-uploading keeps them.
+
 An example config upload is provided in [upload-config.ts][upload-config].
 
 ## Branding
@@ -69,9 +71,46 @@ npm run ts ./examples/create-strava-token.ts -- --clientId <your-client-id> --cl
 
 Authorize the OAuth login of the strava account you want to give access and you will get the refresh token
 
+## Strava Webhook
+
+Activities reach the bot through a Strava [push subscription][strava-webhooks]: Strava posts every activity create, update and delete, and every athlete deauthorization, to `POST /strava-webhook/<secret>` ([api.ts][api]), which keeps the `activities` Firestore collection up to date. The daily update reads that collection instead of polling Strava. The weekly results still poll every athlete live, score that, and make the collection match the poll, so a missed event can't affect the weekly results.
+
+Strava doesn't sign its events, so they're handled with care ([webhookEvents.ts][webhook-events]):
+
+- The callback URL ends in a secret only Strava knows; requests to any other path get a 404.
+- An event is only a prompt to ask Strava: the activity is fetched and stored as Strava returns it, it's only deleted once Strava no longer shows it, and an athlete is only removed for a deauthorization once their token stops working.
+- Strava wants a reply within 2 seconds, so the endpoint just queues the event in `webhookEvents`; the `processStravaWebhookEvent` function ([index.ts][index]) handles it from there, retrying failures for up to 20 hours before giving up and reporting it. The daily update reports and clears any event still queued after a day. The function runs in `europe-west1` because a Firestore-triggered function has to run inside the database's location (`eur3`).
+
+Strava allows one subscription per application. Create it after deploying the functions (Strava checks the endpoint during the call), and view or delete it with [manage-strava-webhook.ts][manage-strava-webhook]. `--create` picks a new secret, appends it to `--url`, and saves the secret, the verify token and the subscription id to the config. Delete the old subscription before creating a new one.
+
+```console
+npm run ts ./examples/manage-strava-webhook.ts -- --view
+npm run ts ./examples/manage-strava-webhook.ts -- --delete --id 12345
+npm run ts ./examples/manage-strava-webhook.ts -- --create --url https://us-central1-<project>.cloudfunctions.net/httpServer/strava-webhook
+```
+
+`--view` shows the callback URL with its secret, so don't share its output.
+
+Strava sends no heartbeat, so the bot watches for silence itself and reports to the errors channel:
+
+- During the challenge, the daily update checks that Strava still has the configured subscription and that an event has arrived in the last 24 hours.
+- The Monday reconciliation lists every activity the webhooks missed (and every stale one it removed) before the week's results are scored.
+
+Webhooks only report changes, so a newly registered athlete's activities since the challenge started are fetched once on registration.
+
+## Between Seasons
+
+Run [reset-season.ts][reset-season] once the season is over, and before the next one's registrations open. It revokes every registered athlete's Strava access and deletes their registration, streak and stored activities, so Strava's connected-athlete count drops back to zero. Everyone registers again for the next season. It first writes a backup of who was registered and their streaks (no tokens or activities) to `functions/excluded/`; delete it once the reset is confirmed.
+
+```console
+npm run ts ./examples/reset-season.ts
+```
+
+FitCoin and results are kept as history.
+
 ## Removing an Athlete
 
-If an athlete revokes access on Strava's side, or asks to have their data removed, run [remove-athlete.ts][remove-athlete] to delete their registration (profile + stored refresh token) and current-challenge streak doc:
+If an athlete revokes access on Strava's side, or asks to have their data removed, run [remove-athlete.ts][remove-athlete] to revoke their access on Strava's side and delete their registration (profile + stored refresh token), stored activities and current-challenge streak doc. A deauthorization on Strava's side arrives as a webhook event and removes the athlete automatically, so this is mainly for data-removal requests and broken tokens:
 
 ```console
 npm run ts ./examples/remove-athlete.ts -- --id 12345
@@ -79,7 +118,7 @@ npm run ts ./examples/remove-athlete.ts -- --id 12345
 npm run ts ./examples/remove-athlete.ts -- --name "First Last"
 ```
 
-This also fixes the more common reason to need it: a revoked or otherwise invalid refresh token fails that one athlete's Strava fetch, and since a single athlete's failure fails the whole weekly batch (see `publishWeeklyResults` in [bot.ts][bot]), weekly results stop for everyone until the athlete is removed. Daily updates carry on without that athlete and post a warning to the errors channel.
+This also fixes the more common reason to need it: a revoked or otherwise invalid refresh token fails that one athlete's Strava fetch, and since a single athlete's failure fails the whole weekly batch (see `publishWeeklyResults` in [bot.ts][bot]), weekly results stop for everyone until the athlete is removed. The daily update reads the webhook-fed activity store and never touches athlete tokens, so the Monday error is the first sign; [check-athlete-tokens.ts][check-athlete-tokens] finds the broken token.
 
 ## Re-running a Failed Job
 
@@ -132,6 +171,13 @@ For local development, service account credentials can be created by following [
 [upload-config]: functions/examples/upload-config.ts
 [upload-branding]: functions/examples/upload-branding.ts
 [remove-athlete]: functions/examples/remove-athlete.ts
+[manage-strava-webhook]: functions/examples/manage-strava-webhook.ts
+[reset-season]: functions/examples/reset-season.ts
+[check-athlete-tokens]: functions/examples/check-athlete-tokens.ts
+[api]: functions/src/api.ts
+[webhook-events]: functions/src/webhookEvents.ts
+[index]: functions/src/index.ts
+[strava-webhooks]: https://developers.strava.com/docs/webhooks/
 [publish-daily-updates]: functions/examples/publish-daily-updates.ts
 [publish-weekly-results]: functions/examples/publish-weekly-results.ts
 [create-draw-snapshot]: functions/examples/create-draw-snapshot.ts

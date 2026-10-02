@@ -1,10 +1,12 @@
 import * as functions from "firebase-functions";
 
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
 
 import { Bot } from "./bot";
 import express from "express";
 import { Server } from "./server";
+import { processQueuedWebhookEvent } from "./activityStore";
 
 // Set memory limit based on: https://firebase.google.com/docs/functions/manage-functions#set-timeout
 // Both scheduled jobs run headless Chrome for the results screenshots; at 1GiB (about 0.6 of a CPU) Chrome sometimes
@@ -31,6 +33,16 @@ export const monday0930 = onSchedule(
   },
   async () => {
     await Bot.publishWeeklyResults();
+  },
+);
+
+// Applies each Strava webhook event POST /strava-webhook/<secret> queued (see api.ts). Firestore triggers must run in
+// a region inside the database's location (eur3), unlike the rest of these functions. retry: a thrown error is
+// retried with backoff for up to 24 hours - see webhookEvents.handleQueuedWebhookEvent.
+export const processStravaWebhookEvent = onDocumentCreated(
+  { document: "webhookEvents/{eventId}", region: "europe-west1", retry: true },
+  async (event) => {
+    await processQueuedWebhookEvent(event.params.eventId);
   },
 );
 

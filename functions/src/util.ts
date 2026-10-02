@@ -68,6 +68,12 @@ export function todayUnix(): number {
   return challengeTime().startOf("day").unix();
 }
 
+// Parses a "YYYY-MM-DD" SAST calendar date (as used by SummerBodiesConfig.challengeStartDate/challengeEndDate)
+// into the Unix timestamp at the start of that day (midnight SAST).
+export function dateStringUnix(dateString: string): number {
+  return moment.utc(dateString, "YYYY-MM-DD").subtract(CHALLENGE_UTC_OFFSET_MINUTES, "minutes").unix();
+}
+
 // Every SAST calendar date ("YYYY-MM-DD") from `startUnix` (inclusive) up to `endUnixExclusive` (exclusive).
 export function weekDateStrings(startUnix: number, endUnixExclusive: number): string[] {
   const dates: string[] = [];

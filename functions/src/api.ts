@@ -2,6 +2,9 @@ import { Request, Response, Router } from "express";
 import { Firestore, SummerBodiesConfig } from "./firestore";
 import { Strava } from "./strava";
 import { errorMessage, isExpectedStravaCodeError, reportError } from "./errorReporting";
+import { backfillAthleteActivities } from "./activityStore";
+import { webhookPostResponse, webhookVerificationResponse } from "./activityLogic";
+import { dateStringUnix, now } from "./util";
 
 const DEFAULT_APP_NAME = "Summer Bodies Challenge";
 
@@ -20,6 +23,30 @@ export class Api {
           res.status(200).json({ okay: true, message: "You are already registered" });
         } else {
           await Firestore.storeAthlete(token);
+
+          // Backfill: webhooks only fire for *future* activity changes, so without this, a mid-challenge
+          // registrant's activities from earlier in the challenge would be invisible until the next weekly
+          // reconciliation poll. Failure here is non-fatal to registration itself - the gap just waits for
+          // this athlete's next webhook event or the next weekly reconciliation instead.
+          try {
+            const athlete = {
+              id: token.athlete.id.toString(),
+              firstname: token.athlete.firstname,
+              lastname: token.athlete.lastname,
+              profile: token.athlete.profile,
+              refreshToken: token.refresh_token,
+            };
+            await backfillAthleteActivities(
+              config.stravaClientId,
+              config.stravaClientSecret,
+              athlete,
+              dateStringUnix(config.challengeStartDate),
+              now(),
+            );
+          } catch (error) {
+            await reportError("Error backfilling new athlete's activities", error, config);
+          }
+
           res.status(200).json({ okay: true, message: "Thank you for registering" });
         }
       } catch (error) {
@@ -95,6 +122,37 @@ export class Api {
         logoUrl: branding?.logoUrl || null,
         faviconUrl: branding?.faviconUrl || null,
       });
+    });
+
+    // One-time validation handshake Strava performs when a push subscription is created (or re-verified) -
+    // see functions/examples/manage-strava-webhook.ts. Must echo hub.challenge within 2s. The last path segment is
+    // the secret part of the callback URL: Strava doesn't sign webhook events, so knowing the URL is what tells
+    // Strava's requests apart from anyone else's.
+    this.router.get("/strava-webhook/:secret", async (req: Request, res: Response) => {
+      try {
+        const { status, body } = webhookVerificationResponse(String(req.params.secret), req.query, await Firestore.getConfig());
+        res.status(status).json(body);
+      } catch (error) {
+        await reportError("Error handling Strava webhook verification", error);
+        res.status(500).json({ error: errorMessage(error) });
+      }
+    });
+
+    // Activity create/update/delete and athlete-deauthorization events - see Strava's webhook docs
+    // (https://developers.strava.com/docs/webhooks/). Strava wants a 200 within 2 seconds and retries otherwise, so
+    // this only checks the event and queues it; processStravaWebhookEvent (index.ts) then checks it with Strava and
+    // applies it - see webhookEvents.ts.
+    this.router.post("/strava-webhook/:secret", async (req: Request, res: Response) => {
+      try {
+        const response = webhookPostResponse(String(req.params.secret), req.body, await Firestore.getConfig());
+        if (response.warning) console.warn(response.warning);
+        if (response.queue) await Firestore.queueWebhookEvent(response.queue);
+        res.status(response.status).json(response.body);
+      } catch (error) {
+        // A non-200 lets Strava's own retry try again.
+        await reportError("Error queueing Strava webhook event", error);
+        res.status(500).json({ error: errorMessage(error) });
+      }
     });
   }
 

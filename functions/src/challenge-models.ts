@@ -130,6 +130,19 @@ export interface AthleteWithActivities extends Athlete {
   activities: Activity[];
 }
 
+// An Activity as persisted in the `activities` Firestore collection (see Firestore.getActivitiesInRange/
+// upsertActivity/deleteActivity) - fed incrementally by Strava webhook events instead of a daily live poll,
+// with the once-a-week live poll (Bot.publishWeeklyResults) reconciling/healing any gaps. A flat top-level
+// collection (not a subcollection per athlete) since activity ids are globally unique across athletes and
+// calculateResults needs every registered athlete's activities in one date range on every run.
+export interface StoredActivity extends Activity {
+  athleteId: string;
+  startDateUnix: number; // derived from start_date, for range queries
+  // When the data written was current: the webhook event's event_time, or now() for the weekly reconciliation
+  // and registration backfill. Keeps an older write from overwriting a newer one - see Firestore.upsertActivity.
+  lastEventTime: number;
+}
+
 type StravaActivityType =
   | "AlpineSki"
   | "BackcountrySki"
