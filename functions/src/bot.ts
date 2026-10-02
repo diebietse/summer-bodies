@@ -8,6 +8,7 @@ import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
 import { currentWeekUnix, getPreviousWeek, previousWeekUnix, now, nextWeekUnix, nowPretty, lastWeekPretty, todayUnix, weekDateStrings } from "./util";
 import { errorMessage, reportError } from "./errorReporting";
+import { getAthletesActivitiesFromStore, syncActivitiesIntoStore } from "./activityStore";
 import crypto from "crypto";
 
 export class Bot {
@@ -36,36 +37,29 @@ export class Bot {
     }
   }
 
+  // Reads from the webhook-fed activity store (see activityStore.ts) instead of polling every athlete's
+  // Strava activities live - that daily live poll is exactly what Strava's capacity review flagged. The
+  // weekly job (below) still polls live, once a week, as a reconciliation safety net that heals any gap left
+  // by a missed webhook event.
   static async publishDailyUpdates() {
     await this.runScheduledJob("publishDailyUpdates", async () => {
       const config = await Firestore.getConfig();
       await this.refreshBotToken(config);
-      const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
       const slack = new Slack(config.slackWebhookUrl, config.slackChannelDaily);
 
       const currentWeek = currentWeekUnix();
       const timeNow = now();
       const nextWeek = nextWeekUnix();
-      const allActivities = await this.getAllStravaAthletesActivities(strava, currentWeek, timeNow);
+      const athletesWithActivities = await getAthletesActivitiesFromStore(currentWeek, timeNow);
 
-      if (allActivities.error) {
-        await slack.post(`Error: Could not get all athletes' activities, will try again later`);
-        await reportError(
-          "publishDailyUpdates: could not get all athletes' Strava activities",
-          new Error("getAllAthletesActivities returned error: true"),
-          config,
-        );
-        return;
-      }
-
-      const results = Challenge.calculateResults(allActivities.athletesWithActivities);
+      const results = Challenge.calculateResults(athletesWithActivities);
       const id = crypto.randomUUID();
 
       results.startDate = currentWeek;
       results.endDate = nextWeek;
       results.currentTime = timeNow;
-      results.streaks = await this.previewStreaks(config, allActivities.athletesWithActivities, currentWeek);
-      results.athletes = this.mapRegisteredAthletes(allActivities.athletesWithActivities);
+      results.streaks = await this.previewStreaks(config, athletesWithActivities, currentWeek);
+      results.athletes = this.mapRegisteredAthletes(athletesWithActivities);
       await Firestore.storeResults(id, JSON.stringify(results));
 
       const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
@@ -93,12 +87,24 @@ export class Bot {
 
       if (allActivities.error) {
         await slack.post(`Error: Could not get all athletes' activities, will try again later`);
+        const failedNames = allActivities.failedAthletes?.map((athlete) => athlete.name).join(", ");
         await reportError(
           "publishWeeklyResults: could not get all athletes' Strava activities",
-          new Error("getAllAthletesActivities returned error: true"),
+          new Error(`getAllAthletesActivities returned error: true${failedNames ? ` (failed: ${failedNames})` : ""}`),
           config,
         );
         return;
+      }
+
+      // Heals the activity store with this week's fresh live-polled data, and reports any activity that
+      // wasn't already there - evidence of a gap the webhook pipeline missed. This is the data point that'll
+      // eventually say whether this weekly reconciliation poll is still earning its keep.
+      const missedActivities = await syncActivitiesIntoStore(allActivities.athletesWithActivities, previousWeek, currentWeek);
+      if (missedActivities.length > 0) {
+        console.log(
+          `publishWeeklyResults: reconciliation found ${missedActivities.length} activities the webhook pipeline missed:`,
+          missedActivities,
+        );
       }
 
       const results = Challenge.calculateResults(allActivities.athletesWithActivities);
@@ -157,7 +163,11 @@ export class Bot {
   // Known limitation: if getAllStravaAthletesActivities fails for this week, publishWeeklyResults returns before
   // this ever runs, and - since only the current week's dates are ever evaluated - that week's streak days are
   // never retried later. This mirrors how a failed week already skips the leaderboard/goal scoring entirely
-  // elsewhere in this file; there's no backfill mechanism for any of it.
+  // elsewhere in this file; there's no backfill mechanism for any of it. This failure mode now also means the
+  // activity store (see activityStore.ts) misses its once-a-week healing pass, compounding the blast radius
+  // to the daily webhook-fed previews too, not just this week's authoritative results - still judged
+  // acceptable since the webhook's athlete-deauthorization handling should make this specific failure (one
+  // athlete's revoked/invalid token blocking the whole batch) far less common than it was before webhooks.
   private static async finalizeStreaks(
     config: SummerBodiesConfig,
     athletes: AthleteWithActivities[],

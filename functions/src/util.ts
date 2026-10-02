@@ -59,6 +59,12 @@ export function todayUnix(): number {
   return moment.utc().startOf("day").unix();
 }
 
+// Parses a "YYYY-MM-DD" UTC calendar date (as used by SummerBodiesConfig.challengeStartDate/challengeEndDate)
+// into the Unix timestamp at the start of that day.
+export function dateStringUnix(dateString: string): number {
+  return moment.utc(dateString, "YYYY-MM-DD").unix();
+}
+
 // Every UTC calendar date ("YYYY-MM-DD") from `startUnix` (inclusive) up to `endUnixExclusive` (exclusive).
 export function weekDateStrings(startUnix: number, endUnixExclusive: number): string[] {
   const dates: string[] = [];

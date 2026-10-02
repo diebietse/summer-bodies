@@ -1,6 +1,11 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { Athlete, Activity, AthleteWithActivities } from "./challenge-models";
 
+export interface FailedAthlete {
+  id: string;
+  name: string;
+}
+
 const REFRESH_GRANT_TYPE = "refresh_token";
 const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code";
 const ACTIVITIES_PER_PAGE = 50;
@@ -31,6 +36,15 @@ export class Strava {
     return result.data;
   }
 
+  // Single-activity detail fetch - used by the webhook event handler, which only ever learns an activity id
+  // (not the activity itself) from a create/update event. Needs only activity:read, same scope athletes
+  // already grant today.
+  async getActivity(accessToken: string, activityId: number): Promise<Activity> {
+    const client = axios.create(Strava.axiosConfig(accessToken));
+    const result = await client.get<Activity>(`/activities/${activityId}`);
+    return result.data;
+  }
+
   static async getTokenFromCode(clientId: string, clientSecret: string, code: string): Promise<TokenFromCodeResponse> {
     const client = axios.create(this.axiosConfig());
 
@@ -55,29 +69,64 @@ export class Strava {
   }
 
   async getAllAthletesActivities(athletes: Athlete[], startUnixTime: number, endUnixTime: number): Promise<GetAllAthletesActivitiesResult> {
-    let activityPromises: Promise<AthleteWithActivities | boolean>[] = [];
-    for (const athlete of athletes) {
-      activityPromises.push(
-        this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch((error) => {
-          console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`);
-          console.log(error);
-          return true;
-        }),
-      );
+    const failedAthletes: FailedAthlete[] = [];
+    const activityPromises = athletes.map((athlete) =>
+      this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch((error) => {
+        console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`);
+        console.log(error);
+        failedAthletes.push({ id: athlete.id, name: `${athlete.firstname} ${athlete.lastname}` });
+        return null;
+      }),
+    );
+
+    const results = await Promise.all(activityPromises);
+
+    // All-or-nothing: a single failed athlete discards the whole batch result, same as before - but now the
+    // caller learns *who* failed instead of just `error: true`, so the resulting Slack alert can name them
+    // directly instead of requiring a separate check-athlete-tokens.ts run to find out.
+    if (failedAthletes.length > 0) {
+      return { athletesWithActivities: [], error: true, failedAthletes };
     }
 
-    const resultsAndErrors = await Promise.all(activityPromises);
-    const athleteActivities: AthleteWithActivities[] = [];
+    return { athletesWithActivities: results as AthleteWithActivities[], error: false };
+  }
 
-    for (const resultOrError of resultsAndErrors) {
-      if (typeof resultOrError === "boolean") {
-        return { athletesWithActivities: [], error: true };
-      } else {
-        athleteActivities.push(resultOrError);
-      }
-    }
+  // Revokes an athlete's authorization grant on Strava's side - distinct from, and in addition to, deleting
+  // our own stored copy of their data (Firestore.removeAthlete). Without this, an athlete we've locally
+  // forgotten about still counts as "connected" from Strava's perspective, since nothing ever told Strava the
+  // grant should end. Takes either an access or refresh token. This is the endpoint Strava documents as the
+  // sole supported one from June 2027 onward (the legacy /oauth/deauthorize retires then), so it's used here
+  // unconditionally rather than switched to later.
+  static async revokeToken(clientId: string, clientSecret: string, token: string): Promise<void> {
+    const client = axios.create(this.axiosConfig());
+    await client.post(`oauth/revoke`, new URLSearchParams({ token }), {
+      auth: { username: clientId, password: clientSecret },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    });
+  }
 
-    return { athletesWithActivities: athleteActivities, error: false };
+  // Strava allows exactly one push subscription per application, covering every authorized athlete - see
+  // functions/examples/manage-strava-webhook.ts, the only caller of these.
+  static async createPushSubscription(clientId: string, clientSecret: string, callbackUrl: string, verifyToken: string): Promise<{ id: number }> {
+    const client = axios.create(this.axiosConfig());
+    const result = await client.post<{ id: number }>("push_subscriptions", {
+      client_id: clientId,
+      client_secret: clientSecret,
+      callback_url: callbackUrl,
+      verify_token: verifyToken,
+    });
+    return result.data;
+  }
+
+  static async viewPushSubscriptions(clientId: string, clientSecret: string): Promise<{ id: number; callback_url: string }[]> {
+    const client = axios.create(this.axiosConfig());
+    const result = await client.get<{ id: number; callback_url: string }[]>(`push_subscriptions?client_id=${clientId}&client_secret=${clientSecret}`);
+    return result.data;
+  }
+
+  static async deletePushSubscription(clientId: string, clientSecret: string, subscriptionId: number): Promise<void> {
+    const client = axios.create(this.axiosConfig());
+    await client.delete(`push_subscriptions/${subscriptionId}?client_id=${clientId}&client_secret=${clientSecret}`);
   }
 
   private static axiosConfig(authToken?: string): AxiosRequestConfig {
@@ -135,4 +184,18 @@ export interface CreateActivityRequest {
 export interface GetAllAthletesActivitiesResult {
   athletesWithActivities: AthleteWithActivities[];
   error: boolean;
+  failedAthletes?: FailedAthlete[];
+}
+
+// https://developers.strava.com/docs/webhooks/ - the POST body Strava sends for every subscribed event.
+// Not signed/authenticated beyond the one-time subscription handshake, so a handler must independently
+// verify owner_id/object_id correspond to something real before acting on them.
+export interface StravaWebhookEvent {
+  object_type: "activity" | "athlete";
+  object_id: number;
+  aspect_type: "create" | "update" | "delete";
+  owner_id: number;
+  updates?: Record<string, string>;
+  subscription_id: number;
+  event_time: number;
 }
