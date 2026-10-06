@@ -36,6 +36,21 @@ export class Bot {
     }
   }
 
+  // Deliberately not posted to the athlete-facing daily/weekly channel - this is an operational problem for
+  // whoever's running the bot to fix, not something athletes need to see or can do anything about.
+  private static async reportFailedActivitiesFetch(
+    caller: string,
+    allActivities: GetAllAthletesActivitiesResult,
+    config: SummerBodiesConfig,
+  ): Promise<void> {
+    const failedNames = allActivities.failedAthletes?.join(", ");
+    await reportError(
+      `${caller}: could not get all athletes' Strava activities`,
+      new Error(`getAllAthletesActivities returned error: true${failedNames ? ` (failed: ${failedNames})` : ""}`),
+      config,
+    );
+  }
+
   static async publishDailyUpdates() {
     await this.runScheduledJob("publishDailyUpdates", async () => {
       const config = await Firestore.getConfig();
@@ -49,13 +64,7 @@ export class Bot {
       const allActivities = await this.getAllStravaAthletesActivities(strava, currentWeek, timeNow);
 
       if (allActivities.error) {
-        await slack.post(`Error: Could not get all athletes' activities, will try again later`);
-        const failedNames = allActivities.failedAthletes?.join(", ");
-        await reportError(
-          "publishDailyUpdates: could not get all athletes' Strava activities",
-          new Error(`getAllAthletesActivities returned error: true${failedNames ? ` (failed: ${failedNames})` : ""}`),
-          config,
-        );
+        await this.reportFailedActivitiesFetch("publishDailyUpdates", allActivities, config);
         return;
       }
 
@@ -93,13 +102,7 @@ export class Bot {
       const allActivities = await this.getAllStravaAthletesActivities(strava, previousWeek, currentWeek);
 
       if (allActivities.error) {
-        await slack.post(`Error: Could not get all athletes' activities, will try again later`);
-        const failedNames = allActivities.failedAthletes?.join(", ");
-        await reportError(
-          "publishWeeklyResults: could not get all athletes' Strava activities",
-          new Error(`getAllAthletesActivities returned error: true${failedNames ? ` (failed: ${failedNames})` : ""}`),
-          config,
-        );
+        await this.reportFailedActivitiesFetch("publishWeeklyResults", allActivities, config);
         return;
       }
 
