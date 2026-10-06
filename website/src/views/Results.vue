@@ -600,24 +600,32 @@ img {
    column proportions make every sibling card the same width regardless of content - Name gets whatever's
    left after the other three, and overflows into an ellipsis instead of forcing the table wider. Not used
    for Other's table, which only ever appears alone (no sibling to stay consistent with) and so is left to
-   size itself naturally - see the challenge.groupings.length check in the template. */
+   size itself naturally - see the challenge.groupings.length check in the template.
+
+   The #/value/FitCoin columns are fixed px, not %: their content (a 24px badge, a header word, a 1-2 digit
+   FitCoin badge) has a pixel footprint that doesn't scale with card width, so a percentage either wastes
+   space on wide cards or starves Name on narrow ones. Name - the one column whose content genuinely needs
+   more room on a wide card - is left with no explicit width so table-layout:fixed gives it everything left
+   over. Sized generously (not just to fit today's data) since real names run longer than the short mock
+   names this was first tuned against - e.g. "Nathaniel van der Merwe" - and multi-word/Afrikaans surnames
+   ("van der X", "du X") are common among real athletes. */
 .grouping-table {
   table-layout: fixed;
 }
 
 .grouping-table th:first-child,
 .grouping-table td:first-child {
-  width: 15%;
+  width: 34px;
 }
 
 .grouping-table th:nth-child(3),
 .grouping-table td:nth-child(3) {
-  width: 30%;
+  width: 82px;
 }
 
 .grouping-table th:last-child,
 .grouping-table td:last-child {
-  width: 22%;
+  width: 66px;
 }
 
 .grouping-table th {
