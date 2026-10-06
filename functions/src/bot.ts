@@ -50,9 +50,10 @@ export class Bot {
 
       if (allActivities.error) {
         await slack.post(`Error: Could not get all athletes' activities, will try again later`);
+        const failedNames = allActivities.failedAthletes?.join(", ");
         await reportError(
           "publishDailyUpdates: could not get all athletes' Strava activities",
-          new Error("getAllAthletesActivities returned error: true"),
+          new Error(`getAllAthletesActivities returned error: true${failedNames ? ` (failed: ${failedNames})` : ""}`),
           config,
         );
         return;
@@ -93,9 +94,10 @@ export class Bot {
 
       if (allActivities.error) {
         await slack.post(`Error: Could not get all athletes' activities, will try again later`);
+        const failedNames = allActivities.failedAthletes?.join(", ");
         await reportError(
           "publishWeeklyResults: could not get all athletes' Strava activities",
-          new Error("getAllAthletesActivities returned error: true"),
+          new Error(`getAllAthletesActivities returned error: true${failedNames ? ` (failed: ${failedNames})` : ""}`),
           config,
         );
         return;

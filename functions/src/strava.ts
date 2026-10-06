@@ -55,29 +55,26 @@ export class Strava {
   }
 
   async getAllAthletesActivities(athletes: Athlete[], startUnixTime: number, endUnixTime: number): Promise<GetAllAthletesActivitiesResult> {
-    let activityPromises: Promise<AthleteWithActivities | boolean>[] = [];
-    for (const athlete of athletes) {
-      activityPromises.push(
-        this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch((error) => {
-          console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`);
-          console.log(error);
-          return true;
-        }),
-      );
+    const failedAthletes: string[] = [];
+    const activityPromises = athletes.map((athlete) =>
+      this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch((error) => {
+        console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`);
+        console.log(error);
+        failedAthletes.push(`${athlete.firstname} ${athlete.lastname}`);
+        return null;
+      }),
+    );
+
+    const results = await Promise.all(activityPromises);
+
+    // All-or-nothing: a single failed athlete discards the whole batch result, same as before - but now the
+    // caller learns *who* failed instead of just `error: true`, so the resulting Slack alert can name them
+    // directly instead of requiring a separate check-athlete-tokens.ts run to find out.
+    if (failedAthletes.length > 0) {
+      return { athletesWithActivities: [], error: true, failedAthletes };
     }
 
-    const resultsAndErrors = await Promise.all(activityPromises);
-    const athleteActivities: AthleteWithActivities[] = [];
-
-    for (const resultOrError of resultsAndErrors) {
-      if (typeof resultOrError === "boolean") {
-        return { athletesWithActivities: [], error: true };
-      } else {
-        athleteActivities.push(resultOrError);
-      }
-    }
-
-    return { athletesWithActivities: athleteActivities, error: false };
+    return { athletesWithActivities: results as AthleteWithActivities[], error: false };
   }
 
   private static axiosConfig(authToken?: string): AxiosRequestConfig {
@@ -135,4 +132,5 @@ export interface CreateActivityRequest {
 export interface GetAllAthletesActivitiesResult {
   athletesWithActivities: AthleteWithActivities[];
   error: boolean;
+  failedAthletes?: string[];
 }
