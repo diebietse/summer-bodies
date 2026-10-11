@@ -41,8 +41,8 @@ Log at least 1km of an On Foot activity (Run/Walk/Hike) every single day between
 | stravaClientId     | Strava OAuth ID of the bot account                               |
 | stravaRefreshToken | Strava OAuth refresh token of the bot account                    |
 | stravaClientSecret | Strava OAuth client secret token of the bot account              |
-| challengeStartDate | Inclusive UTC start date (`YYYY-MM-DD`) of the streak challenge  |
-| challengeEndDate   | Inclusive UTC end date (`YYYY-MM-DD`) of the streak challenge    |
+| challengeStartDate | Inclusive SAST start date (`YYYY-MM-DD`) of the streak challenge |
+| challengeEndDate   | Inclusive SAST end date (`YYYY-MM-DD`) of the streak challenge   |
 
 An example config upload is provided in [upload-config.ts][upload-config].
 

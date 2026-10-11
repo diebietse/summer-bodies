@@ -4,42 +4,40 @@ export async function waitMilliseconds(milliseconds: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+// The challenge runs on South African time (the schedulers in index.ts are Africa/Johannesburg too), so weeks
+// start Monday 00:00 SAST and "today" rolls over at midnight SAST. SAST is UTC+2 all year (no DST), so a fixed
+// offset is exact.
+const CHALLENGE_UTC_OFFSET_MINUTES = 120;
+
+function challengeTime(at: moment.Moment = moment.utc()): moment.Moment {
+  return at.clone().utcOffset(CHALLENGE_UTC_OFFSET_MINUTES);
+}
+
 export function now(): number {
-  let now = moment.utc();
-  return now.unix();
+  return moment.utc().unix();
 }
 
 export function nowPretty(): string {
-  let now = moment.utc();
-  return `${now.format("YYYY-MM-DD HH:mm:ss")} UTC`;
+  return `${challengeTime().format("YYYY-MM-DD HH:mm:ss")} SAST`;
 }
 
 export function lastWeekPretty(): string {
-  let now = moment.utc();
-  return `${now.clone().subtract(7, "days").startOf("isoWeek").format("YYYY-MM-DD")} - ${now.startOf("isoWeek").format("YYYY-MM-DD")}`;
+  return `${weeksAgo(1).format("YYYY-MM-DD")} - ${weeksAgo(0).format("YYYY-MM-DD")}`;
 }
 
-export function getCurrentWeek(): Date {
-  let now = moment.utc();
-  return now.startOf("isoWeek").toDate();
-}
-
+// The Monday of last week as a Date at 00:00 UTC on that calendar date - used to label stored fitcoin docs
+// (via toDateString), so the label stays the Monday's date rather than shifting to Sunday with the SAST offset.
 export function getPreviousWeek(): Date {
-  let now = moment.utc();
-  const lastWeek = now.subtract(7, "days");
-  return lastWeek.startOf("isoWeek").toDate();
+  return moment.utc(weeksAgo(1).format("YYYY-MM-DD")).toDate();
 }
 
-export function weeksAgo(weeksAgo: number): moment.Moment {
-  let now = moment.utc();
-  const lastWeek = now.subtract(weeksAgo, "weeks");
-  return lastWeek.startOf("isoWeek");
+// Start (Monday 00:00 SAST) of the challenge week `weeks` weeks before `at` (default: now).
+export function weeksAgo(weeks: number, at?: moment.Moment): moment.Moment {
+  return challengeTime(at).subtract(weeks, "weeks").startOf("isoWeek");
 }
 
-export function weeksAgoUnix(weeksAgo: number): number {
-  let now = moment.utc();
-  const lastWeek = now.subtract(weeksAgo, "weeks");
-  return lastWeek.startOf("isoWeek").unix();
+export function weeksAgoUnix(weeks: number, at?: moment.Moment): number {
+  return weeksAgo(weeks, at).unix();
 }
 
 export function previousWeekUnix(): number {
@@ -54,16 +52,16 @@ export function nextWeekUnix(): number {
   return weeksAgoUnix(-1);
 }
 
-// Start of today (UTC) - the exclusive upper bound of "every day so far", since today isn't over yet.
+// Start of today (SAST) - the exclusive upper bound of "every day so far", since today isn't over yet.
 export function todayUnix(): number {
-  return moment.utc().startOf("day").unix();
+  return challengeTime().startOf("day").unix();
 }
 
-// Every UTC calendar date ("YYYY-MM-DD") from `startUnix` (inclusive) up to `endUnixExclusive` (exclusive).
+// Every SAST calendar date ("YYYY-MM-DD") from `startUnix` (inclusive) up to `endUnixExclusive` (exclusive).
 export function weekDateStrings(startUnix: number, endUnixExclusive: number): string[] {
   const dates: string[] = [];
-  const cursor = moment.unix(startUnix).utc();
-  const end = moment.unix(endUnixExclusive).utc();
+  const cursor = challengeTime(moment.unix(startUnix));
+  const end = challengeTime(moment.unix(endUnixExclusive));
   while (cursor.isBefore(end)) {
     dates.push(cursor.format("YYYY-MM-DD"));
     cursor.add(1, "day");

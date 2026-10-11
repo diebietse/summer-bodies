@@ -203,7 +203,7 @@ export interface SummerBodiesConfig {
   stravaClientId: string;
   stravaRefreshToken: string;
   stravaClientSecret: string;
-  // Inclusive UTC calendar dates ("YYYY-MM-DD") bounding the streak challenge.
+  // Inclusive SAST calendar dates ("YYYY-MM-DD") bounding the streak challenge.
   challengeStartDate: string;
   challengeEndDate: string;
 }
