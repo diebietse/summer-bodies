@@ -593,6 +593,13 @@ img {
   white-space: nowrap;
 }
 
+.challenge-results .table th:nth-child(2),
+.challenge-results .table td:nth-child(2),
+.challenge-results .table th:nth-child(3),
+.challenge-results .table td:nth-child(3) {
+  text-align: left;
+}
+
 /* The Duration/Distance/Elevation (and Mile Challenge Attempts/Pace) cards sit side by side with equal
    widths, but a plain table sizes its own columns from its own content - a longer header ("Elevation" vs
    "Duration") or wider value ("1,240" vs "51") makes that table need more total width than its siblings,
