@@ -1,4 +1,3 @@
-import moment from "moment";
 import {
   ActivityType,
   GroupingType,
@@ -90,7 +89,7 @@ export class Challenge {
   }
 
   // Advances each athlete's 1km-a-day streak across `challengeDates` (ascending "YYYY-MM-DD" dates, evaluated in
-  // order against each activity's calendar day). Once a date has no qualifying activity, the athlete is frozen as
+  // order against each activity's calendar day in the athlete's own timezone). Once a date has no qualifying activity, the athlete is frozen as
   // eliminated (`alive: false`) with whatever streak they'd built up, and stays that way on every later call
   // regardless of what they log afterwards.
   //
@@ -111,7 +110,7 @@ export class Challenge {
       const qualifyingDates = new Set(
         athlete.activities
           .filter((activity) => Challenge.toOurActivity(activity.type) === ActivityType.OnFoot && activity.distance >= STREAK_MIN_DISTANCE_M)
-          .map((activity) => moment.utc(activity.start_date).format("YYYY-MM-DD")),
+          .map((activity) => activity.start_date_local.slice(0, 10)),
       );
 
       let alive = true;

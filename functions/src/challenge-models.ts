@@ -105,6 +105,8 @@ export interface Activity {
   average_speed: number;
   type: StravaActivityType;
   start_date: string;
+  // The athlete's local wall-clock start time, formatted with a "Z" suffix even though it isn't UTC.
+  start_date_local: string;
 }
 
 // subset of https://developers.strava.com/docs/reference/#api-models-DetailedAthlete

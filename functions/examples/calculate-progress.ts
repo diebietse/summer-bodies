@@ -20,6 +20,7 @@ const activities: AthleteWithActivities[] = [
         total_elevation_gain: 1,
         name: "I cycled too much",
         start_date: "now",
+        start_date_local: "now",
         average_speed: 0.549,
       },
       {
@@ -31,6 +32,7 @@ const activities: AthleteWithActivities[] = [
         total_elevation_gain: 1,
         name: "I cycled too much",
         start_date: "now",
+        start_date_local: "now",
         average_speed: 0.549,
       },
     ],

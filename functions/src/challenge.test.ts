@@ -22,21 +22,31 @@ function athlete(id: string, activities: Partial<Activity>[]): AthleteWithActivi
       average_speed: 0,
       type: "Run",
       start_date: "2026-10-05T06:00:00Z",
+      start_date_local: "2026-10-05T06:00:00Z",
       ...activity,
     })),
   };
 }
 
 test("new athlete who logs a qualifying run on the checked day starts a streak", () => {
-  const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date: "2026-10-05T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-05T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
   assert.equal(result.alive, true);
   assert.equal(result.currentStreak, 1);
 });
 
+test("an activity counts toward the athlete's local day, not the UTC day", () => {
+  // 00:30 SAST on the 6th is 22:30 UTC on the 5th
+  const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date: "2026-10-05T22:30:00Z", start_date_local: "2026-10-06T00:30:00Z" }])];
+  const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-06"]);
+
+  assert.equal(result.alive, true);
+  assert.equal(result.currentStreak, 1);
+});
+
 test("an activity under 1km does not qualify", () => {
-  const athletes = [athlete("1", [{ type: "Run", distance: 900, start_date: "2026-10-05T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Run", distance: 900, start_date_local: "2026-10-05T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
   assert.equal(result.alive, false);
@@ -44,7 +54,7 @@ test("an activity under 1km does not qualify", () => {
 });
 
 test("an activity of exactly 1km qualifies", () => {
-  const athletes = [athlete("1", [{ type: "Walk", distance: 1000, start_date: "2026-10-05T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Walk", distance: 1000, start_date_local: "2026-10-05T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
   assert.equal(result.alive, true);
@@ -52,7 +62,7 @@ test("an activity of exactly 1km qualifies", () => {
 });
 
 test("a non on-foot activity does not qualify, even if it's far enough", () => {
-  const athletes = [athlete("1", [{ type: "Ride", distance: 5000, start_date: "2026-10-05T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Ride", distance: 5000, start_date_local: "2026-10-05T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
   assert.equal(result.alive, false);
@@ -62,8 +72,8 @@ test("a non on-foot activity does not qualify, even if it's far enough", () => {
 test("only one qualifying activity on the day is enough", () => {
   const athletes = [
     athlete("1", [
-      { type: "Run", distance: 500, start_date: "2026-10-05T06:00:00Z" },
-      { type: "Hike", distance: 2000, start_date: "2026-10-05T17:00:00Z" },
+      { type: "Run", distance: 500, start_date_local: "2026-10-05T06:00:00Z" },
+      { type: "Hike", distance: 2000, start_date_local: "2026-10-05T17:00:00Z" },
     ]),
   ];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
@@ -74,7 +84,7 @@ test("only one qualifying activity on the day is enough", () => {
 
 test("an activity only counts for its own calendar day", () => {
   // Qualifying activity on the 6th, but the 5th - the first day being checked - has nothing.
-  const athletes = [athlete("1", [{ type: "Run", distance: 2000, start_date: "2026-10-06T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Run", distance: 2000, start_date_local: "2026-10-06T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05", "2026-10-06"]);
 
   assert.equal(result.alive, false);
@@ -84,8 +94,8 @@ test("an activity only counts for its own calendar day", () => {
 test("consecutive qualifying days extend an existing streak", () => {
   const athletes = [
     athlete("1", [
-      { type: "Run", distance: 1500, start_date: "2026-10-12T06:00:00Z" },
-      { type: "Walk", distance: 1200, start_date: "2026-10-13T06:00:00Z" },
+      { type: "Run", distance: 1500, start_date_local: "2026-10-12T06:00:00Z" },
+      { type: "Walk", distance: 1200, start_date_local: "2026-10-13T06:00:00Z" },
     ]),
   ];
   const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", alive: true, currentStreak: 3 }]]);
@@ -96,7 +106,7 @@ test("consecutive qualifying days extend an existing streak", () => {
 });
 
 test("a missed day eliminates the athlete and freezes their streak at the days completed so far in this check", () => {
-  const athletes = [athlete("1", [{ type: "Run", distance: 1500, start_date: "2026-10-12T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Run", distance: 1500, start_date_local: "2026-10-12T06:00:00Z" }])];
   const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", alive: true, currentStreak: 6 }]]);
   // The 12th qualifies (streak -> 7), the 13th has nothing recorded, so they're eliminated with the streak frozen at 7.
   const [result] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12", "2026-10-13"]);
@@ -106,7 +116,7 @@ test("a missed day eliminates the athlete and freezes their streak at the days c
 });
 
 test("an already eliminated athlete stays eliminated, even if they log a qualifying activity", () => {
-  const athletes = [athlete("1", [{ type: "Run", distance: 5000, start_date: "2026-10-12T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Run", distance: 5000, start_date_local: "2026-10-12T06:00:00Z" }])];
   const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", alive: false, currentStreak: 6 }]]);
   const [result] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12"]);
 
@@ -115,7 +125,7 @@ test("an already eliminated athlete stays eliminated, even if they log a qualify
 });
 
 test("Mile Challenge is omitted when nobody logged a mile-range run, like On Wheels is when nobody rode", () => {
-  const athletes = [athlete("1", [{ type: "Run", distance: 5000, start_date: "2026-10-05T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Run", distance: 5000, start_date_local: "2026-10-05T06:00:00Z" }])];
   const { topResults } = Challenge.calculateResults(athletes);
 
   assert.equal(
@@ -129,7 +139,7 @@ test("Mile Challenge is omitted when nobody logged a mile-range run, like On Whe
 });
 
 test("Mile Challenge is included once someone logs a mile-range run", () => {
-  const athletes = [athlete("1", [{ type: "Run", distance: 1600, start_date: "2026-10-05T06:00:00Z" }])];
+  const athletes = [athlete("1", [{ type: "Run", distance: 1600, start_date_local: "2026-10-05T06:00:00Z" }])];
   const { topResults } = Challenge.calculateResults(athletes);
 
   assert.equal(
@@ -141,9 +151,9 @@ test("Mile Challenge is included once someone logs a mile-range run", () => {
 test("Other category contestants list the distinct activity types behind their total", () => {
   const athletes = [
     athlete("1", [
-      { type: "Yoga", moving_time: 30 * 60, start_date: "2026-10-05T06:00:00Z" },
-      { type: "Golf", moving_time: 60 * 60, start_date: "2026-10-06T06:00:00Z" },
-      { type: "Yoga", moving_time: 30 * 60, start_date: "2026-10-07T06:00:00Z" },
+      { type: "Yoga", moving_time: 30 * 60, start_date_local: "2026-10-05T06:00:00Z" },
+      { type: "Golf", moving_time: 60 * 60, start_date_local: "2026-10-06T06:00:00Z" },
+      { type: "Yoga", moving_time: 30 * 60, start_date_local: "2026-10-07T06:00:00Z" },
     ]),
   ];
   const { topResults } = Challenge.calculateResults(athletes);
