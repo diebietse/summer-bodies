@@ -323,7 +323,7 @@ export default {
         day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-        timeZone: "UTC",
+        timeZone: "Africa/Johannesburg",
         timeZoneName: "short",
       };
       return currentDate.toLocaleDateString(undefined, options);
@@ -401,6 +401,7 @@ export default {
       const options = {
         month: "short",
         day: "numeric",
+        timeZone: "Africa/Johannesburg",
       };
 
       const startFormatted = startDate.toLocaleDateString(undefined, options);

@@ -2,9 +2,9 @@
 // Not used anywhere in the real app - only Preview.vue imports this, and Preview.vue only exists in dev builds.
 // Shaped exactly like the ChallengeResults JSON functions/src/bot.ts stores and /results/:id serves.
 export const mockResults = {
-  startDate: 1791158400, // 2026-10-05 00:00 UTC (Monday)
-  endDate: 1791763200, // 2026-10-12 00:00 UTC (next Monday)
-  currentTime: 1791450900, // 2026-10-08 09:15 UTC (Thursday - mid-week, so the "in progress" scenario reads correctly)
+  startDate: 1791151200, // 2026-10-05 00:00 SAST (Monday)
+  endDate: 1791756000, // 2026-10-12 00:00 SAST (next Monday)
+  currentTime: 1791450900, // 2026-10-08 11:15 SAST (Thursday - mid-week, so the "in progress" scenario reads correctly)
   topResults: [
     {
       name: "On Foot",
