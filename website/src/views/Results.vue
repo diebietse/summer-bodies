@@ -70,10 +70,10 @@
                           </tr>
                         </thead>
                         <tbody>
-                          <tr v-for="(contestant, index) in grouping.contestants" :key="contestant.name" :class="getRowClass(index)">
+                          <tr v-for="(contestant, index) in grouping.contestants" :key="contestant.name" :class="getRowClass(rankAt(grouping.contestants, index, 'total'))">
                             <td>
-                              <span class="position-badge" :class="getPositionClass(index)">
-                                {{ index + 1 }}
+                              <span class="position-badge" :class="getPositionClass(rankAt(grouping.contestants, index, 'total'))">
+                                {{ rankAt(grouping.contestants, index, "total") }}
                               </span>
                             </td>
                             <td class="fw-bold">{{ contestant.name }}</td>
@@ -222,8 +222,8 @@
                   <tbody>
                     <tr v-for="(streak, index) in sortedStreaks" :key="streak.athleteId" :class="streak.alive ? 'table-success' : 'table-light'">
                       <td>
-                        <span class="position-badge" :class="getPositionClass(index)">
-                          {{ index + 1 }}
+                        <span class="position-badge" :class="getPositionClass(rankAt(sortedStreaks, index, 'currentStreak'))">
+                          {{ rankAt(sortedStreaks, index, "currentStreak") }}
                         </span>
                       </td>
                       <td class="fw-bold">{{ streak.name }}</td>
@@ -409,16 +409,23 @@ export default {
 
       return `${startFormatted} - ${endFormatted}`;
     },
-    getRowClass(index) {
-      if (index === 0) return "table-warning"; // Gold
-      if (index === 1) return "table-secondary"; // Silver
-      if (index === 2) return "table-info"; // Bronze
+    // Competition ranking ("1, 2, 2, 4"): rows with the same value share a position, like FitCoin does, and
+    // the next distinct value skips ahead by the size of the tie. `list` must already be sorted by `key`.
+    rankAt(list, index, key) {
+      let first = index;
+      while (first > 0 && list[first - 1][key] === list[index][key]) first--;
+      return first + 1;
+    },
+    getRowClass(rank) {
+      if (rank === 1) return "table-warning"; // Gold
+      if (rank === 2) return "table-secondary"; // Silver
+      if (rank === 3) return "table-info"; // Bronze
       return "";
     },
-    getPositionClass(index) {
-      if (index === 0) return "position-gold";
-      if (index === 1) return "position-silver";
-      if (index === 2) return "position-bronze";
+    getPositionClass(rank) {
+      if (rank === 1) return "position-gold";
+      if (rank === 2) return "position-silver";
+      if (rank === 3) return "position-bronze";
       return "position-default";
     },
   },
