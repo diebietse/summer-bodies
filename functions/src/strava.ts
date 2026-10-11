@@ -56,25 +56,19 @@ export class Strava {
 
   async getAllAthletesActivities(athletes: Athlete[], startUnixTime: number, endUnixTime: number): Promise<GetAllAthletesActivitiesResult> {
     const failedAthletes: string[] = [];
-    const activityPromises = athletes.map((athlete) =>
-      this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch((error) => {
-        console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`);
-        console.log(error);
-        failedAthletes.push(`${athlete.firstname} ${athlete.lastname}`);
-        return null;
-      }),
+    const results = await Promise.all(
+      athletes.map((athlete) =>
+        this.populateAthleteActivities(athlete, startUnixTime, endUnixTime).catch((error) => {
+          console.log(`Warning: failed getting athlete '${athlete.firstname} ${athlete.lastname}'`);
+          console.log(error);
+          failedAthletes.push(`${athlete.firstname} ${athlete.lastname}`);
+          return null;
+        }),
+      ),
     );
 
-    const results = await Promise.all(activityPromises);
-
-    // All-or-nothing: a single failed athlete discards the whole batch result, same as before - but now the
-    // caller learns *who* failed instead of just `error: true`, so the resulting Slack alert can name them
-    // directly instead of requiring a separate check-athlete-tokens.ts run to find out.
-    if (failedAthletes.length > 0) {
-      return { athletesWithActivities: [], error: true, failedAthletes };
-    }
-
-    return { athletesWithActivities: results as AthleteWithActivities[], error: false };
+    const athletesWithActivities = results.filter((result): result is AthleteWithActivities => result !== null);
+    return { athletesWithActivities, error: failedAthletes.length > 0, failedAthletes };
   }
 
   private static axiosConfig(authToken?: string): AxiosRequestConfig {
@@ -129,8 +123,10 @@ export interface CreateActivityRequest {
   commute?: number;
 }
 
+// `athletesWithActivities` only holds the athletes that were fetched successfully; `error` is true if any
+// athlete failed (named in `failedAthletes`). Callers choose whether to carry on with a partial result.
 export interface GetAllAthletesActivitiesResult {
   athletesWithActivities: AthleteWithActivities[];
   error: boolean;
-  failedAthletes?: string[];
+  failedAthletes: string[];
 }

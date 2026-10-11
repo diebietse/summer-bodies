@@ -35,12 +35,23 @@ export function isExpectedStravaCodeError(error: unknown): boolean {
 // document; omit it (e.g. when Firestore.getConfig() itself is what failed) and it's fetched fresh.
 export async function reportError(context: string, error: unknown, config?: SummerBodiesConfig): Promise<void> {
   console.error(`${context}:`, error);
+  await postToErrorsChannel(`🚨 ${context}\n\`\`\`${errorMessage(error)}\`\`\``, config);
+}
+
+// Like reportError, for a non-fatal problem the job worked around (e.g. skipping one athlete) - same
+// errors-channel-only, never-throws behavior.
+export async function reportWarning(context: string, details: string, config?: SummerBodiesConfig): Promise<void> {
+  console.warn(`${context}: ${details}`);
+  await postToErrorsChannel(`⚠️ ${context}\n\`\`\`${details}\`\`\``, config);
+}
+
+async function postToErrorsChannel(text: string, config?: SummerBodiesConfig): Promise<void> {
   try {
     const resolvedConfig = config ?? (await Firestore.getConfig());
     if (!resolvedConfig.slackChannelErrors) return;
 
     const slack = new Slack(resolvedConfig.slackWebhookUrl, resolvedConfig.slackChannelErrors);
-    await slack.post(`🚨 ${context}\n\`\`\`${errorMessage(error)}\`\`\``);
+    await slack.post(text);
   } catch (reportingError) {
     console.error("Failed to report error to Slack:", reportingError);
   }

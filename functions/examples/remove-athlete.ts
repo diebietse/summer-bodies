@@ -8,9 +8,9 @@
 // (https://www.strava.com/legal/api) - revoking access on Strava's side does not, by itself, delete anything
 // this app stored.
 //
-// It's also the fix if daily/weekly results generation has stopped for everyone: a revoked or otherwise
-// invalid refresh token fails that athlete's Strava fetch, and getAllAthletesActivities treats any single
-// athlete's failure as a whole-batch failure - see functions/src/bot.ts.
+// It's also the fix if weekly results generation has stopped for everyone: a revoked or otherwise invalid
+// refresh token fails that athlete's Strava fetch, and the weekly results are all-or-nothing (the daily update
+// just skips them with a warning) - see functions/src/bot.ts.
 
 import { parseArgs } from "node:util";
 import { Firestore } from "../src/firestore";

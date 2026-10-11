@@ -7,7 +7,7 @@ import { Challenge } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
 import { currentWeekUnix, getPreviousWeek, previousWeekUnix, now, nextWeekUnix, nowPretty, lastWeekPretty, todayUnix, weekDateStrings } from "./util";
-import { errorMessage, reportError } from "./errorReporting";
+import { errorMessage, reportError, reportWarning } from "./errorReporting";
 import crypto from "crypto";
 
 export class Bot {
@@ -36,17 +36,16 @@ export class Bot {
     }
   }
 
-  // Deliberately not posted to the athlete-facing daily/weekly channel - this is an operational problem for
+  // Deliberately not posted to the athlete-facing daily/weekly channels - this is an operational problem for
   // whoever's running the bot to fix, not something athletes need to see or can do anything about.
   private static async reportFailedActivitiesFetch(
     caller: string,
     allActivities: GetAllAthletesActivitiesResult,
     config: SummerBodiesConfig,
   ): Promise<void> {
-    const failedNames = allActivities.failedAthletes?.join(", ");
     await reportError(
       `${caller}: could not get all athletes' Strava activities`,
-      new Error(`getAllAthletesActivities returned error: true${failedNames ? ` (failed: ${failedNames})` : ""}`),
+      new Error(`getAllAthletesActivities returned error: true (failed: ${allActivities.failedAthletes.join(", ")})`),
       config,
     );
   }
@@ -63,9 +62,19 @@ export class Bot {
       const nextWeek = nextWeekUnix();
       const allActivities = await this.getAllStravaAthletesActivities(strava, currentWeek, timeNow);
 
+      // Unlike the weekly results, a daily update is only a preview, so carry on without any athlete whose
+      // fetch failed (e.g. a revoked token) and flag them in the errors channel instead - unless nobody
+      // could be fetched, which points at Strava itself rather than at one athlete.
       if (allActivities.error) {
-        await this.reportFailedActivitiesFetch("publishDailyUpdates", allActivities, config);
-        return;
+        if (allActivities.athletesWithActivities.length === 0) {
+          await this.reportFailedActivitiesFetch("publishDailyUpdates", allActivities, config);
+          return;
+        }
+        await reportWarning(
+          "publishDailyUpdates: skipped athletes whose Strava activities could not be fetched",
+          allActivities.failedAthletes.join(", "),
+          config,
+        );
       }
 
       const results = Challenge.calculateResults(allActivities.athletesWithActivities);
@@ -200,7 +209,9 @@ export class Bot {
   ): Promise<GetAllAthletesActivitiesResult> {
     const athletes = await Firestore.getRegisteredAthletes();
     const results = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
-    if (!results.error) await Firestore.updateAthletesRefreshToken(results.athletesWithActivities);
+    // Strava rotates the refresh token on every use, so persist the new one for everyone who was fetched
+    // successfully - even when others failed and the caller discards the result.
+    await Firestore.updateAthletesRefreshToken(results.athletesWithActivities);
     return results;
   }
 

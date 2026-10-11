@@ -3,10 +3,10 @@
 // * A service-account.json file with a firestore service account in the project root directory
 //
 // Refreshes every registered athlete's stored Strava token and reports which ones are invalid/revoked. Useful
-// after a Slack alert like "Could not get all athletes' Strava activities" - getAllAthletesActivities treats
-// any single athlete's failed refresh as a whole-batch failure (see functions/src/bot.ts), so daily/weekly
-// results generation stops for everyone until the bad token is found and that athlete removed (see
-// examples/remove-athlete.ts).
+// after a Slack alert like "Could not get all athletes' Strava activities" or "skipped athletes whose Strava
+// activities could not be fetched" - a single athlete's failed refresh is skipped by the daily update but
+// stops the weekly results for everyone (see functions/src/bot.ts) until the bad token is found and that
+// athlete removed (see examples/remove-athlete.ts).
 //
 // Strava rotates the refresh token on every use, so a successful check immediately persists the newly-issued
 // token back to Firestore - otherwise this script would itself break the very tokens it just confirmed work.

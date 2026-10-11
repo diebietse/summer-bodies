@@ -167,8 +167,8 @@ export class Firestore {
   // challenge's streak collection - see functions/examples/remove-athlete.ts. Used to honor a deauthorization
   // or data-deletion request (see the Strava API Agreement's termination clause on deleting Strava Data), and
   // doubles as the fix for a revoked/invalid refresh token, which otherwise fails every future Strava fetch for
-  // that athlete and, since getAllAthletesActivities treats one athlete's failure as a whole-batch failure,
-  // blocks daily/weekly results generation for everyone until the athlete is removed.
+  // that athlete - the daily update skips them with a warning, but the weekly results are all-or-nothing and
+  // stay blocked for everyone until the athlete is removed.
   static async removeAthlete(athleteId: string, challengeStartDate?: string): Promise<void> {
     const batch = db.batch();
     batch.delete(db.collection("athletes").doc(athleteId));
