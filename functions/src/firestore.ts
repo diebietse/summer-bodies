@@ -68,6 +68,11 @@ export class Firestore {
     await this.writeFitcoinDocs(db.collection("fitcoin").doc(`streak-${dateString}`).collection("athletes"), fitcoinsContestants);
   }
 
+  static async getStreakFitcoin(dateString: string): Promise<ContestantFitcoin[]> {
+    const docs = await db.collection("fitcoin").doc(`streak-${dateString}`).collection("athletes").get();
+    return docs.docs.map((doc) => ({ name: doc.id, fitcoin: doc.data().fitcoin }));
+  }
+
   // Scoped under the challenge's start date (like fitcoin/<date>/athletes/<name> above) so a new challenge run
   // - a new year's challengeStartDate - starts every athlete fresh, instead of inheriting a prior run's
   // `alive: false` and staying permanently eliminated.

@@ -132,6 +132,15 @@ export class Challenge {
     });
   }
 
+  // Sums each contestant's FitCoin across several lists (e.g. the weekly results and the streak award).
+  static combineFitcoin(...lists: ContestantFitcoin[][]): ContestantFitcoin[] {
+    const totals = new Map<string, number>();
+    for (const contestant of lists.flat()) {
+      totals.set(contestant.name, (totals.get(contestant.name) ?? 0) + contestant.fitcoin);
+    }
+    return [...totals].map(([name, fitcoin]) => ({ name, fitcoin })).sort(compareContestantFitcoin);
+  }
+
   static calculateFitcoin(results: ChallengeResults): ContestantFitcoin[] {
     const topResults = results.topResults;
     let fitcoinTotals = new Map<string, number>();

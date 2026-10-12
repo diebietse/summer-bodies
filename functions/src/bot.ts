@@ -230,7 +230,10 @@ export class Bot {
     const contestantFitcoin = Challenge.calculateFitcoin(results);
     const lastWeek = getPreviousWeek();
     await Firestore.storeFitcoin(contestantFitcoin, lastWeek);
-    await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", contestantFitcoin));
+    // The streak award is stored separately (see finalizeStreaks) so it isn't double-counted in the totals,
+    // but it belongs in this week's breakdown so that it adds up to the total below.
+    const streakFitcoin = await Firestore.getStreakFitcoin(lastWeek.toDateString());
+    await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", Challenge.combineFitcoin(contestantFitcoin, streakFitcoin)));
   }
 
   private static async publishTotalFitcoin(slack: Slack) {

@@ -190,3 +190,22 @@ test("only dates after the last evaluated one are counted", () => {
   assert.equal(result.currentStreak, 3);
   assert.equal(result.lastEvaluatedDate, "2026-10-07");
 });
+
+test("combineFitcoin sums per contestant and sorts highest first", () => {
+  const combined = Challenge.combineFitcoin(
+    [
+      { name: "A", fitcoin: 10 },
+      { name: "B", fitcoin: 30 },
+    ],
+    [
+      { name: "A", fitcoin: 7 },
+      { name: "C", fitcoin: 7 },
+    ],
+  );
+
+  assert.deepEqual(combined, [
+    { name: "B", fitcoin: 30 },
+    { name: "A", fitcoin: 17 },
+    { name: "C", fitcoin: 7 },
+  ]);
+});
