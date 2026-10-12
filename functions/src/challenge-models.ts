@@ -86,6 +86,9 @@ export interface StreakState {
   name: string;
   alive: boolean;
   currentStreak: number;
+  // The last challenge date ("YYYY-MM-DD") already counted into currentStreak, so re-evaluating the same dates
+  // (e.g. a re-run of the weekly job) can't count them twice.
+  lastEvaluatedDate?: string;
 }
 
 export function compareContestantFitcoin(a: ContestantFitcoin, b: ContestantFitcoin) {

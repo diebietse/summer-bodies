@@ -182,12 +182,15 @@ export class Bot {
     if (!result) return [];
     const { previousStreaks, updatedStreaks } = result;
 
+    // Only newly counted days earn FitCoin, so re-running the job for the same week awards nothing again (and
+    // must not overwrite the already-stored award with zeros).
     const streakFitcoin: ContestantFitcoin[] = updatedStreaks
       .filter((streak) => streak.alive)
       .map((streak) => ({
         name: streak.name,
         fitcoin: streak.currentStreak - (previousStreaks.get(streak.athleteId)?.currentStreak ?? 0),
-      }));
+      }))
+      .filter((contestant) => contestant.fitcoin > 0);
 
     await Promise.all([
       Firestore.saveStreaks(config.challengeStartDate, updatedStreaks),

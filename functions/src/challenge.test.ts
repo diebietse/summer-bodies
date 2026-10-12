@@ -163,3 +163,30 @@ test("Other category contestants list the distinct activity types behind their t
 
   assert.deepEqual(duration?.contestants[0].activityTypes, ["Golf", "Yoga"]);
 });
+
+test("evaluating the same dates again does not count them twice", () => {
+  const athletes = [
+    athlete("1", [
+      { type: "Run", distance: 1200, start_date_local: "2026-10-05T06:00:00Z" },
+      { type: "Run", distance: 1200, start_date_local: "2026-10-06T06:00:00Z" },
+    ]),
+  ];
+  const dates = ["2026-10-05", "2026-10-06"];
+  const first = Challenge.calculateStreakUpdates(athletes, new Map(), dates);
+  const again = Challenge.calculateStreakUpdates(athletes, new Map(first.map((streak) => [streak.athleteId, streak])), dates);
+
+  assert.equal(first[0].currentStreak, 2);
+  assert.equal(again[0].currentStreak, 2);
+  assert.equal(again[0].alive, true);
+});
+
+test("only dates after the last evaluated one are counted", () => {
+  const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-07T06:00:00Z" }])];
+  const previousStreaks = new Map<string, StreakState>([
+    ["1", { athleteId: "1", name: "Test 1", alive: true, currentStreak: 2, lastEvaluatedDate: "2026-10-06" }],
+  ]);
+  const [result] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-06", "2026-10-07"]);
+
+  assert.equal(result.currentStreak, 3);
+  assert.equal(result.lastEvaluatedDate, "2026-10-07");
+});

@@ -89,9 +89,11 @@ export class Challenge {
   }
 
   // Advances each athlete's 1km-a-day streak across `challengeDates` (ascending "YYYY-MM-DD" dates, evaluated in
-  // order against each activity's calendar day in the athlete's own timezone). Once a date has no qualifying activity, the athlete is frozen as
-  // eliminated (`alive: false`) with whatever streak they'd built up, and stays that way on every later call
-  // regardless of what they log afterwards.
+  // order against each activity's calendar day in the athlete's own timezone). Once a date has no qualifying
+  // activity, the athlete is frozen as eliminated (`alive: false`) with whatever streak they'd built up, and
+  // stays that way on every later call regardless of what they log afterwards.
+  //
+  // Dates up to the athlete's `lastEvaluatedDate` are skipped, so passing the same dates again is a no-op.
   //
   // `challengeDates` is deliberately the caller's responsibility: activities can be uploaded to Strava late (up to
   // Sunday 23:59 for that week, per the challenge rules), so callers should only pass dates whose upload window has
@@ -113,9 +115,12 @@ export class Challenge {
           .map((activity) => activity.start_date_local.slice(0, 10)),
       );
 
+      const pendingDates = challengeDates.filter((date) => !previous.lastEvaluatedDate || date > previous.lastEvaluatedDate);
+      if (pendingDates.length === 0) return { ...previous, name };
+
       let alive = true;
       let currentStreak = previous.currentStreak;
-      for (const date of challengeDates) {
+      for (const date of pendingDates) {
         if (!qualifyingDates.has(date)) {
           alive = false;
           break;
@@ -123,7 +128,7 @@ export class Challenge {
         currentStreak++;
       }
 
-      return { athleteId: athlete.id, name, alive, currentStreak };
+      return { athleteId: athlete.id, name, alive, currentStreak, lastEvaluatedDate: pendingDates[pendingDates.length - 1] };
     });
   }
 
