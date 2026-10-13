@@ -270,6 +270,22 @@ test("a long activity overlapping a kept shorter one is dropped, even when it al
   );
 });
 
+test("overlapping activities from different groups are both kept", () => {
+  const athletes = [
+    athlete("1", [
+      { id: 1, name: "Walk", type: "Walk", distance: 5000, start_date: "2026-10-05T06:00:00Z", elapsed_time: 3600, moving_time: 3600 },
+      { id: 2, name: "Workout", type: "Workout", distance: 0, start_date: "2026-10-05T06:20:00Z", elapsed_time: 600, moving_time: 600 },
+    ]),
+  ];
+  const { athletes: result, ignored } = Challenge.removeDuplicateActivities(athletes);
+
+  assert.deepEqual(
+    result[0].activities.map((activity) => activity.name),
+    ["Walk", "Workout"],
+  );
+  assert.equal(ignored.length, 0);
+});
+
 test("overlap between different athletes is not a duplicate", () => {
   const activity = [{ start_date: "2026-10-05T06:00:00Z", elapsed_time: 1800, moving_time: 1800 }];
   const { athletes: result } = Challenge.removeDuplicateActivities([athlete("1", activity), athlete("2", activity)]);

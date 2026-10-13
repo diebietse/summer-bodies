@@ -26,6 +26,10 @@ export class Challenge {
   // recorded twice (e.g. a watch and a phone, or a watch app and a synced Fitbit). Of each overlapping group
   // only the shortest (by moving time, then elapsed time) is kept, so a duplicate can never inflate anyone's
   // totals. Two activities overlap when the overlap is more than half of the shorter one's elapsed time.
+  //
+  // Only activities in the same group (On Foot / On Wheels / Other) can be duplicates: a short Workout logged
+  // during a long walk is a separate recording, and dropping the walk for it could cost the athlete their
+  // streak day - an elimination that can never be undone.
   static removeDuplicateActivities(athletes: AthleteWithActivities[]): { athletes: AthleteWithActivities[]; ignored: IgnoredDuplicate[] } {
     const ignored: IgnoredDuplicate[] = [];
     const describe = (activity: Activity) =>
@@ -35,6 +39,7 @@ export class Challenge {
       return { start, end: start + activity.elapsed_time * 1000 };
     };
     const overlaps = (a: Activity, b: Activity) => {
+      if (Challenge.toOurActivity(a.type) !== Challenge.toOurActivity(b.type)) return false;
       const [x, y] = [bounds(a), bounds(b)];
       const overlapMs = Math.min(x.end, y.end) - Math.max(x.start, y.start);
       return overlapMs > 0.5 * Math.min(a.elapsed_time, b.elapsed_time) * 1000;
