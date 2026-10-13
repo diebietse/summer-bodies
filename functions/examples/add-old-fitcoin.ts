@@ -9,6 +9,7 @@ import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";
 import { Challenge } from "../src/challenge";
 import moment from "moment";
+import { weekLabel, weeksAgoUnix } from "../src/util";
 
 async function addFitcoin(strava: Strava, startUnixTime: number, endUnixTime: number) {
   const athletes = await Firestore.getRegisteredAthletes();
@@ -21,7 +22,7 @@ async function addFitcoin(strava: Strava, startUnixTime: number, endUnixTime: nu
   const results = Challenge.calculateResults(athletesWithActivities);
   const contestantFitcoin = Challenge.calculateFitcoin(results);
 
-  await Firestore.storeFitcoin(contestantFitcoin, moment.unix(startUnixTime).toDate());
+  await Firestore.storeFitcoin(contestantFitcoin, weekLabel(moment.unix(startUnixTime)));
 }
 
 async function addOldFitcoin() {
@@ -29,12 +30,8 @@ async function addOldFitcoin() {
   const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
 
   for (let i = 12; i >= 1; i--) {
-    const startUnixTime = moment.utc().subtract(i, "week").startOf("isoWeek").unix();
-    const endUnixTime = moment
-      .utc()
-      .subtract(i - 1, "week")
-      .startOf("isoWeek")
-      .unix();
+    const startUnixTime = weeksAgoUnix(i);
+    const endUnixTime = weeksAgoUnix(i - 1);
     console.log(`Adding ${moment.unix(startUnixTime).toDate()} - ${moment.unix(endUnixTime).toDate()}`);
     await addFitcoin(strava, startUnixTime, endUnixTime);
   }

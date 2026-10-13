@@ -25,10 +25,21 @@ export function lastWeekPretty(): string {
   return `${weeksAgo(1).format("YYYY-MM-DD")} - ${weeksAgo(0).format("YYYY-MM-DD")}`;
 }
 
-// The Monday of last week as a Date at 00:00 UTC on that calendar date - used to label stored fitcoin docs
-// (via toDateString), so the label stays the Monday's date rather than shifting to Sunday with the SAST offset.
-export function getPreviousWeek(): Date {
-  return moment.utc(weeksAgo(1).format("YYYY-MM-DD")).toDate();
+// Labels a week's stored fitcoin docs by its SAST Monday (e.g. "Mon Oct 05 2026"), whatever the server's timezone.
+// The format matches Date.toDateString(), which existing docs were keyed by, so re-running an old week overwrites
+// its doc instead of adding a second one that would double-count in the totals.
+export function weekLabel(at: moment.Moment): string {
+  return challengeTime(at).startOf("isoWeek").format("ddd MMM DD YYYY");
+}
+
+export function previousWeekLabel(): string {
+  return weekLabel(weeksAgo(1));
+}
+
+// The last SAST calendar date ("YYYY-MM-DD") of the week before the one containing `at` - i.e. the Sunday whose
+// week the weekly job running at `at` (Mondays) has just evaluated.
+export function lastDayOfPreviousWeek(at: moment.Moment): string {
+  return weeksAgo(0, at).subtract(1, "day").format("YYYY-MM-DD");
 }
 
 // Start (Monday 00:00 SAST) of the challenge week `weeks` weeks before `at` (default: now).

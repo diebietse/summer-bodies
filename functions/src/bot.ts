@@ -6,7 +6,17 @@ import { AthleteWithActivities, ChallengeResults, ContestantFitcoin, RegisteredA
 import { Challenge, IgnoredDuplicate } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
-import { currentWeekUnix, getPreviousWeek, previousWeekUnix, now, nextWeekUnix, nowPretty, lastWeekPretty, todayUnix, weekDateStrings } from "./util";
+import {
+  currentWeekUnix,
+  previousWeekLabel,
+  previousWeekUnix,
+  now,
+  nextWeekUnix,
+  nowPretty,
+  lastWeekPretty,
+  todayUnix,
+  weekDateStrings,
+} from "./util";
 import { errorMessage, reportError, reportWarning } from "./errorReporting";
 import crypto from "crypto";
 
@@ -64,7 +74,9 @@ export class Bot {
 
       // Unlike the weekly results, a daily update is only a preview, so carry on without any athlete whose
       // fetch failed (e.g. a revoked token) and flag them in the errors channel instead - unless nobody
-      // could be fetched, which points at Strava itself rather than at one athlete.
+      // could be fetched, which points at Strava itself rather than at one athlete. Skipped athletes are also
+      // missing from that day's streak preview and athlete list - accepted, since nothing here is persisted and
+      // the weekly results (all-or-nothing) are what count.
       if (allActivities.error) {
         if (allActivities.athletesWithActivities.length === 0) {
           await this.reportFailedActivitiesFetch("publishDailyUpdates", allActivities, config);
@@ -200,10 +212,11 @@ export class Bot {
       }))
       .filter((contestant) => contestant.fitcoin > 0);
 
-    await Promise.all([
-      Firestore.saveStreaks(config.challengeStartDate, updatedStreaks),
-      streakFitcoin.length > 0 ? Firestore.storeStreakFitcoin(streakFitcoin, getPreviousWeek().toDateString()) : Promise.resolve(),
-    ]);
+    // FitCoin first, streaks second: once the streaks are saved a re-run awards nothing for these days, so saving
+    // them before a failed FitCoin write would lose that award for good. The other way round, a re-run just
+    // recomputes the same award and overwrites it.
+    if (streakFitcoin.length > 0) await Firestore.storeStreakFitcoin(streakFitcoin, previousWeekLabel());
+    await Firestore.saveStreaks(config.challengeStartDate, updatedStreaks);
 
     return updatedStreaks;
   }
@@ -237,11 +250,11 @@ export class Bot {
 
   private static async publishWeeklyFitcoin(slack: Slack, results: ChallengeResults) {
     const contestantFitcoin = Challenge.calculateFitcoin(results);
-    const lastWeek = getPreviousWeek();
+    const lastWeek = previousWeekLabel();
     await Firestore.storeFitcoin(contestantFitcoin, lastWeek);
     // The streak award is stored separately (see finalizeStreaks) so it isn't double-counted in the totals,
     // but it belongs in this week's breakdown so that it adds up to the total below.
-    const streakFitcoin = await Firestore.getStreakFitcoin(lastWeek.toDateString());
+    const streakFitcoin = await Firestore.getStreakFitcoin(lastWeek);
     await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", Challenge.combineFitcoin(contestantFitcoin, streakFitcoin)));
   }
 

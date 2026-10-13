@@ -5,6 +5,7 @@ import * as fs from "fs";
 import { ContestantFitcoin, compareContestantFitcoin, Athlete, StreakState } from "./challenge-models";
 import moment from "moment";
 import { TokenFromCodeResponse } from "./strava";
+import { lastDayOfPreviousWeek } from "./util";
 
 // service-account.json in the root directory of the project
 const CUSTOM_SERVICE_ACCOUNT = path.resolve(__dirname, "../../service-account.json");
@@ -58,8 +59,8 @@ export class Firestore {
     await batch.commit();
   }
 
-  static async storeFitcoin(fitcoinsContestants: ContestantFitcoin[], date: Date): Promise<void> {
-    await this.writeFitcoinDocs(db.collection("fitcoin").doc(date.toDateString()).collection("athletes"), fitcoinsContestants);
+  static async storeFitcoin(fitcoinsContestants: ContestantFitcoin[], weekLabel: string): Promise<void> {
+    await this.writeFitcoinDocs(db.collection("fitcoin").doc(weekLabel).collection("athletes"), fitcoinsContestants);
   }
 
   // Uses a `streak-` prefixed doc id (rather than reusing storeFitcoin's date-keyed doc) so a daily streak
@@ -79,7 +80,13 @@ export class Firestore {
   static async getStreaks(challengeStartDate: string): Promise<Map<string, StreakState>> {
     const docs = await db.collection("streaks").doc(challengeStartDate).collection("athletes").get();
     const streaks = new Map<string, StreakState>();
-    docs.forEach((doc) => streaks.set(doc.id, doc.data() as StreakState));
+    docs.forEach((doc) => {
+      const streak = doc.data() as StreakState;
+      // Docs saved before lastEvaluatedDate existed were only ever written by the Monday weekly job, for the week
+      // that had just ended - so derive it from the write time, or re-running that week would count it twice.
+      streak.lastEvaluatedDate ??= lastDayOfPreviousWeek(moment(doc.updateTime.toMillis()));
+      streaks.set(doc.id, streak);
+    });
     return streaks;
   }
 
