@@ -209,3 +209,71 @@ test("combineFitcoin sums per contestant and sorts highest first", () => {
     { name: "C", fitcoin: 7 },
   ]);
 });
+
+test("of two overlapping activities only the shortest is kept", () => {
+  const athletes = [
+    athlete("1", [
+      { id: 1, name: "Phone", start_date: "2026-10-11T08:20:47Z", elapsed_time: 6624, moving_time: 6624, distance: 6330 },
+      { id: 2, name: "Watch", start_date: "2026-10-11T08:23:03Z", elapsed_time: 4518, moving_time: 4356, distance: 4820 },
+    ]),
+  ];
+  const { athletes: result, ignored } = Challenge.removeDuplicateActivities(athletes);
+
+  assert.deepEqual(
+    result[0].activities.map((activity) => activity.name),
+    ["Watch"],
+  );
+  assert.equal(ignored.length, 1);
+  assert.match(ignored[0].ignored, /^Phone /);
+  assert.match(ignored[0].kept, /^Watch /);
+});
+
+test("back-to-back and unrelated activities are all kept", () => {
+  const athletes = [
+    athlete("1", [
+      { id: 1, start_date: "2026-10-05T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
+      { id: 2, start_date: "2026-10-05T06:30:00Z", elapsed_time: 1800, moving_time: 1800 },
+      { id: 3, start_date: "2026-10-06T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
+    ]),
+  ];
+  const { athletes: result, ignored } = Challenge.removeDuplicateActivities(athletes);
+
+  assert.equal(result[0].activities.length, 3);
+  assert.equal(ignored.length, 0);
+});
+
+test("identical duplicates keep exactly one", () => {
+  const same = { start_date: "2026-10-05T06:17:00Z", elapsed_time: 3300, moving_time: 3300 };
+  const { athletes: result } = Challenge.removeDuplicateActivities([
+    athlete("1", [
+      { id: 1, ...same },
+      { id: 2, ...same },
+    ]),
+  ]);
+
+  assert.equal(result[0].activities.length, 1);
+});
+
+test("a long activity overlapping a kept shorter one is dropped, even when it also overlaps a third", () => {
+  const athletes = [
+    athlete("1", [
+      { id: 1, name: "A", start_date: "2026-10-05T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
+      { id: 2, name: "Long", start_date: "2026-10-05T06:10:00Z", elapsed_time: 3600, moving_time: 3600 },
+      { id: 3, name: "C", start_date: "2026-10-05T06:40:00Z", elapsed_time: 1800, moving_time: 1800 },
+    ]),
+  ];
+  const { athletes: result } = Challenge.removeDuplicateActivities(athletes);
+
+  assert.deepEqual(
+    result[0].activities.map((activity) => activity.name),
+    ["A", "C"],
+  );
+});
+
+test("overlap between different athletes is not a duplicate", () => {
+  const activity = [{ start_date: "2026-10-05T06:00:00Z", elapsed_time: 1800, moving_time: 1800 }];
+  const { athletes: result } = Challenge.removeDuplicateActivities([athlete("1", activity), athlete("2", activity)]);
+
+  assert.equal(result[0].activities.length, 1);
+  assert.equal(result[1].activities.length, 1);
+});

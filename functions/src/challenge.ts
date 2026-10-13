@@ -15,7 +15,50 @@ import {
   STREAK_MIN_DISTANCE_M,
 } from "./challenge-models";
 
+export interface IgnoredDuplicate {
+  athlete: string;
+  ignored: string;
+  kept: string;
+}
+
 export class Challenge {
+  // A person can't do two activities at once, so overlapping activities from one athlete are the same effort
+  // recorded twice (e.g. a watch and a phone, or a watch app and a synced Fitbit). Of each overlapping group
+  // only the shortest (by moving time, then elapsed time) is kept, so a duplicate can never inflate anyone's
+  // totals. Two activities overlap when the overlap is more than half of the shorter one's elapsed time.
+  static removeDuplicateActivities(athletes: AthleteWithActivities[]): { athletes: AthleteWithActivities[]; ignored: IgnoredDuplicate[] } {
+    const ignored: IgnoredDuplicate[] = [];
+    const describe = (activity: Activity) =>
+      `${activity.name} ${activity.start_date_local.slice(0, 16).replace("T", " ")} (${Math.round(activity.moving_time / 60)} min)`;
+    const bounds = (activity: Activity) => {
+      const start = Date.parse(activity.start_date);
+      return { start, end: start + activity.elapsed_time * 1000 };
+    };
+    const overlaps = (a: Activity, b: Activity) => {
+      const [x, y] = [bounds(a), bounds(b)];
+      const overlapMs = Math.min(x.end, y.end) - Math.max(x.start, y.start);
+      return overlapMs > 0.5 * Math.min(a.elapsed_time, b.elapsed_time) * 1000;
+    };
+
+    const deduplicated = athletes.map((athlete) => {
+      const shortestFirst = [...athlete.activities].sort(
+        (a, b) => a.moving_time - b.moving_time || a.elapsed_time - b.elapsed_time || a.start_date.localeCompare(b.start_date) || a.id - b.id,
+      );
+      const kept: Activity[] = [];
+      for (const activity of shortestFirst) {
+        const duplicateOf = kept.find((other) => overlaps(activity, other));
+        if (duplicateOf) {
+          ignored.push({ athlete: `${athlete.firstname} ${athlete.lastname}`, ignored: describe(activity), kept: describe(duplicateOf) });
+        } else {
+          kept.push(activity);
+        }
+      }
+      return { ...athlete, activities: athlete.activities.filter((activity) => kept.includes(activity)) };
+    });
+
+    return { athletes: deduplicated, ignored };
+  }
+
   private static getChallengeEvents(athletes: AthleteWithActivities[]): ChallengeEvent[] {
     const events = this.athletesToOurEvents(athletes);
     return this.ourEventsToChallengeEvents(events);

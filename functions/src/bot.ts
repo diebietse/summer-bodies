@@ -3,7 +3,7 @@ import { GetAllAthletesActivitiesResult, Strava } from "./strava";
 import { Slack } from "./slack";
 import { Format } from "./format";
 import { AthleteWithActivities, ChallengeResults, ContestantFitcoin, RegisteredAthlete, StreakState } from "./challenge-models";
-import { Challenge } from "./challenge";
+import { Challenge, IgnoredDuplicate } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
 import { currentWeekUnix, getPreviousWeek, previousWeekUnix, now, nextWeekUnix, nowPretty, lastWeekPretty, todayUnix, weekDateStrings } from "./util";
@@ -115,6 +115,14 @@ export class Bot {
         return;
       }
 
+      if (allActivities.ignoredDuplicates.length > 0) {
+        await reportWarning(
+          "publishWeeklyResults: ignored overlapping (duplicate) activities, keeping the shortest",
+          allActivities.ignoredDuplicates.map((d) => `${d.athlete}: ignored ${d.ignored}, overlaps ${d.kept}`).join("\n"),
+          config,
+        );
+      }
+
       const results = Challenge.calculateResults(allActivities.athletesWithActivities);
       const id = crypto.randomUUID();
 
@@ -209,13 +217,14 @@ export class Bot {
     strava: Strava,
     startUnixTime: number,
     endUnixTime: number,
-  ): Promise<GetAllAthletesActivitiesResult> {
+  ): Promise<GetAllAthletesActivitiesResult & { ignoredDuplicates: IgnoredDuplicate[] }> {
     const athletes = await Firestore.getRegisteredAthletes();
     const results = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
     // Strava rotates the refresh token on every use, so persist the new one for everyone who was fetched
     // successfully - even when others failed and the caller discards the result.
     await Firestore.updateAthletesRefreshToken(results.athletesWithActivities);
-    return results;
+    const { athletes: deduplicated, ignored } = Challenge.removeDuplicateActivities(results.athletesWithActivities);
+    return { ...results, athletesWithActivities: deduplicated, ignoredDuplicates: ignored };
   }
 
   private static async publishInProgress(slack: Slack, resultsUrl: string, screenshotUrl: string) {
