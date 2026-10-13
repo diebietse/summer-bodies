@@ -1,5 +1,5 @@
 <template>
-  <div class="results">
+  <div class="results" :class="{ 'results-screenshot': screenshot }">
     <img :alt="`${appName} logo`" src="../assets/logo.svg" />
     <h1>
       <span v-if="isResultsInProgress"> In progress results for {{ formatDateRange() }}<br />Results generated on {{ currentDateFormatted }} </span>
@@ -526,6 +526,12 @@ img {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+}
+
+/* The Slack screenshot (see functions/src/puppeteer.ts) is wider than the interactive page so the three-per-row
+   cards have room for longer names. */
+.results-screenshot {
+  max-width: 1400px;
 }
 
 .nav-tabs-container {

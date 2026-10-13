@@ -25,9 +25,10 @@ export class Puppeteer {
 
     await page.setCacheEnabled(false);
 
-    // Set mobile viewport for 1024x1024 resolution
+    // Wider than the results page's screenshot-mode max-width (1400px, see Results.vue) so that layout fills the
+    // image, giving the three-per-row cards room for longer names. Full-page, so the height only seeds the layout.
     await page.setViewport({
-      width: 1024,
+      width: 1500,
       height: 1024,
       deviceScaleFactor: 2,
       isLandscape: false,
