@@ -230,7 +230,7 @@ export class Bot {
     return { ...results, athletesWithActivities: deduplicated, ignoredDuplicates: ignored };
   }
 
-  // Screenshots each section of the results page separately (challenges, goals, streak) and uploads them to
+  // Screenshots each section of the results page separately (streak, goals, challenges) and uploads them to
   // Firebase Storage, so Slack shows several readable images instead of one tall, scaled-down page.
   private static async screenshotResults(resultsUrl: string, fileNamePrefix: string): Promise<ResultsImage[]> {
     const sections = await Puppeteer.screenshotSections(`${resultsUrl}?screenshot=true`);

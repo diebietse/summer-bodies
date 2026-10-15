@@ -22,7 +22,7 @@ export class Slack {
     });
   }
 
-  // One message with an image block per section (e.g. Challenge Results, Goal Achievements, Streak Challenge).
+  // One message with an image block per section (e.g. Streak Challenge, Goal Achievements, Challenge Results).
   async postResults(mainMessage: string, images: ResultsImage[], resultsUrl: string) {
     await this.postBlocks([
       {

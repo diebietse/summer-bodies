@@ -43,57 +43,70 @@
       </div>
 
       <!-- In screenshot mode every section below with data-screenshot renders at once, and the Slack bot screenshots
-           each one as its own image (see functions/src/puppeteer.ts), titled by data-screenshot-title. -->
+           each one as its own image (see functions/src/puppeteer.ts), titled by data-screenshot-title, in this order -
+           shortest first, so the tall Challenge Results image doesn't push the others far down the Slack message. -->
 
-      <!-- Challenge Results Tab -->
-      <div v-if="activeTab === 'challenges' || screenshot" class="tab-content" data-screenshot="challenges" data-screenshot-title="Challenge Results">
-        <div class="challenge-results">
-          <div v-for="challenge in results.topResults" :key="challenge.name" class="challenge-section">
-            <h2 class="challenge-title">{{ challenge.name }}</h2>
+      <!-- Streak Challenge Tab -->
+      <div v-if="hasStreaks && (activeTab === 'streak' || screenshot)" class="tab-content" data-screenshot="streak" data-screenshot-title="Streak Challenge">
+        <div class="streak-results">
+          <h2 class="section-title">1km-a-day Streak Challenge</h2>
+          <p v-if="isResultsInProgress" class="text-muted text-center mb-4">On track so far this week - not final. Missing a day doesn't eliminate you until this week's Sunday 23:59 upload deadline has passed.</p>
+          <p v-else class="text-muted text-center mb-4">This week's result - final.</p>
 
-            <div class="row justify-content-center">
-              <div v-for="grouping in challenge.groupings" :key="grouping.name" class="mb-4" :class="challenge.groupings.length === 1 ? 'col-12 col-md-8 col-lg-6' : 'col-md-6 col-lg-4'">
-                <div class="card h-100">
-                  <div class="card-header">
-                    <h5 class="card-title mb-0">
-                      {{ grouping.name }}
-                      <span v-if="grouping.unit" class="text-muted small">({{ grouping.unit }})</span>
-                    </h5>
-                  </div>
-                  <div class="card-body p-0">
-                    <div class="table-responsive">
-                      <table class="table table-sm mb-0" :class="{ 'grouping-table': challenge.groupings.length > 1 }">
-                        <thead class="table-dark">
-                          <tr>
-                            <th scope="col">#</th>
-                            <th scope="col">Name</th>
-                            <th scope="col">{{ grouping.name }}</th>
-                            <th v-if="challenge.name === otherCategory" scope="col">Activities</th>
-                            <th scope="col">FitCoin</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr v-for="(contestant, index) in grouping.contestants" :key="contestant.name" :class="getRowClass(rankAt(grouping.contestants, index, 'total'))">
-                            <td>
-                              <span class="position-badge" :class="getPositionClass(rankAt(grouping.contestants, index, 'total'))">
-                                {{ rankAt(grouping.contestants, index, "total") }}
-                              </span>
-                            </td>
-                            <td class="fw-bold">{{ contestant.name }}</td>
-                            <td>{{ formatValue(contestant.total, grouping.unit) }}</td>
-                            <td v-if="challenge.name === otherCategory" class="text-muted small">{{ (contestant.activityTypes || []).map(formatSportType).join(", ") }}</td>
-                            <td>
-                              <span class="badge bg-warning text-dark">{{ contestant.fitcoin }}</span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+          <div class="row mb-4 justify-content-center">
+            <div class="col-md-3 col-sm-6 mb-3">
+              <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                  <h3 class="card-title">{{ stillInCount }}</h3>
+                  <p class="card-text">Still In It</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+              <div class="card text-center bg-secondary text-white">
+                <div class="card-body">
+                  <h3 class="card-title">{{ eliminatedCount }}</h3>
+                  <p class="card-text">Eliminated</p>
                 </div>
               </div>
             </div>
           </div>
+
+          <div class="card">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table mb-0">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Name</th>
+                      <th scope="col">Days Survived</th>
+                      <th scope="col">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="streak in displayedStreaks" :key="streak.athleteId" :class="streak.alive ? 'table-success' : 'table-light'">
+                      <td>
+                        <span class="position-badge" :class="getPositionClass(streakRank(streak))">
+                          {{ streakRank(streak) }}
+                        </span>
+                      </td>
+                      <td class="fw-bold">{{ streak.name }}</td>
+                      <td>{{ streak.currentStreak }}</td>
+                      <td>
+                        <span class="badge" :class="streak.alive ? 'bg-success' : 'bg-secondary'">
+                          {{ streak.alive ? "Still In" : "Eliminated" }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <p v-if="hiddenStreakCount > 0" class="text-muted mt-3 small text-center">{{ hiddenStreakCount }} earlier {{ hiddenStreakCount === 1 ? "elimination" : "eliminations" }} not shown.</p>
+          <p class="text-muted mt-3 small text-center">Miss a day of at least 1km on foot and you're out - eliminations are only final once the week's Sunday 23:59 upload deadline has passed.</p>
         </div>
       </div>
 
@@ -159,67 +172,55 @@
         </div>
       </div>
 
-      <!-- Streak Challenge Tab -->
-      <div v-if="hasStreaks && (activeTab === 'streak' || screenshot)" class="tab-content" data-screenshot="streak" data-screenshot-title="Streak Challenge">
-        <div class="streak-results">
-          <h2 class="section-title">1km-a-day Streak Challenge</h2>
-          <p v-if="isResultsInProgress" class="text-muted text-center mb-4">On track so far this week - not final. Missing a day doesn't eliminate you until this week's Sunday 23:59 upload deadline has passed.</p>
-          <p v-else class="text-muted text-center mb-4">This week's result - final.</p>
+      <!-- Challenge Results Tab -->
+      <div v-if="activeTab === 'challenges' || screenshot" class="tab-content" data-screenshot="challenges" data-screenshot-title="Challenge Results">
+        <div class="challenge-results">
+          <div v-for="challenge in results.topResults" :key="challenge.name" class="challenge-section">
+            <h2 class="challenge-title">{{ challenge.name }}</h2>
 
-          <div class="row mb-4 justify-content-center">
-            <div class="col-md-3 col-sm-6 mb-3">
-              <div class="card text-center bg-success text-white">
-                <div class="card-body">
-                  <h3 class="card-title">{{ stillInCount }}</h3>
-                  <p class="card-text">Still In It</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-3 col-sm-6 mb-3">
-              <div class="card text-center bg-secondary text-white">
-                <div class="card-body">
-                  <h3 class="card-title">{{ eliminatedCount }}</h3>
-                  <p class="card-text">Eliminated</p>
+            <div class="row justify-content-center">
+              <div v-for="grouping in challenge.groupings" :key="grouping.name" class="mb-4" :class="challenge.groupings.length === 1 ? 'col-12 col-md-8 col-lg-6' : 'col-md-6 col-lg-4'">
+                <div class="card h-100">
+                  <div class="card-header">
+                    <h5 class="card-title mb-0">
+                      {{ grouping.name }}
+                      <span v-if="grouping.unit" class="text-muted small">({{ grouping.unit }})</span>
+                    </h5>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table table-sm mb-0" :class="{ 'grouping-table': challenge.groupings.length > 1 }">
+                        <thead class="table-dark">
+                          <tr>
+                            <th scope="col">#</th>
+                            <th scope="col">Name</th>
+                            <th scope="col">{{ grouping.name }}</th>
+                            <th v-if="challenge.name === otherCategory" scope="col">Activities</th>
+                            <th scope="col">FitCoin</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="(contestant, index) in grouping.contestants" :key="contestant.name" :class="getRowClass(rankAt(grouping.contestants, index, 'total'))">
+                            <td>
+                              <span class="position-badge" :class="getPositionClass(rankAt(grouping.contestants, index, 'total'))">
+                                {{ rankAt(grouping.contestants, index, "total") }}
+                              </span>
+                            </td>
+                            <td class="fw-bold">{{ contestant.name }}</td>
+                            <td>{{ formatValue(contestant.total, grouping.unit) }}</td>
+                            <td v-if="challenge.name === otherCategory" class="text-muted small">{{ (contestant.activityTypes || []).map(formatSportType).join(", ") }}</td>
+                            <td>
+                              <span class="badge bg-warning text-dark">{{ contestant.fitcoin }}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-          <div class="card">
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table mb-0">
-                  <thead class="table-dark">
-                    <tr>
-                      <th scope="col">#</th>
-                      <th scope="col">Name</th>
-                      <th scope="col">Days Survived</th>
-                      <th scope="col">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="streak in displayedStreaks" :key="streak.athleteId" :class="streak.alive ? 'table-success' : 'table-light'">
-                      <td>
-                        <span class="position-badge" :class="getPositionClass(streakRank(streak))">
-                          {{ streakRank(streak) }}
-                        </span>
-                      </td>
-                      <td class="fw-bold">{{ streak.name }}</td>
-                      <td>{{ streak.currentStreak }}</td>
-                      <td>
-                        <span class="badge" :class="streak.alive ? 'bg-success' : 'bg-secondary'">
-                          {{ streak.alive ? "Still In" : "Eliminated" }}
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <p v-if="hiddenStreakCount > 0" class="text-muted mt-3 small text-center">{{ hiddenStreakCount }} earlier {{ hiddenStreakCount === 1 ? "elimination" : "eliminations" }} not shown.</p>
-          <p class="text-muted mt-3 small text-center">Miss a day of at least 1km on foot and you're out - eliminations are only final once the week's Sunday 23:59 upload deadline has passed.</p>
         </div>
       </div>
 

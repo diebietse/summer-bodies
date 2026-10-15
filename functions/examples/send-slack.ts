@@ -20,7 +20,7 @@ async function main() {
   try {
     await slack.postResults(
       `Screenshot of in progress results on ${nowPretty()}`,
-      ["Challenge Results", "Goal Achievements", "Streak Challenge"].map((title) => ({ title, url: EXAMPLE_IMAGE_URL })),
+      ["Streak Challenge", "Goal Achievements", "Challenge Results"].map((title) => ({ title, url: EXAMPLE_IMAGE_URL })),
       "https://summer-bodies.web.app/results/e699fc5b-f578-446e-85c1-6104ffec23f7",
     );
   } catch (e) {
