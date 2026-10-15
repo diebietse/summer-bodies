@@ -102,37 +102,13 @@
         <div class="goal-results">
           <h2 class="section-title">Goal Achievements</h2>
 
-          <!-- Summary Stats - just the achieved count in the Slack screenshot -->
-          <div class="row mb-4" :class="{ 'justify-content-center': screenshot }">
+          <!-- Summary Stats -->
+          <div class="row mb-4 justify-content-center">
             <div class="col-md-3 col-sm-6 mb-3">
               <div class="card text-center bg-success text-white">
                 <div class="card-body">
                   <h3 class="card-title">{{ achievedCount }}</h3>
                   <p class="card-text">Goals Achieved</p>
-                </div>
-              </div>
-            </div>
-            <div v-if="!screenshot" class="col-md-3 col-sm-6 mb-3">
-              <div class="card text-center bg-danger text-white">
-                <div class="card-body">
-                  <h3 class="card-title">{{ notAchievedCount }}</h3>
-                  <p class="card-text">Goals Not Achieved</p>
-                </div>
-              </div>
-            </div>
-            <div v-if="!screenshot" class="col-md-3 col-sm-6 mb-3">
-              <div class="card text-center bg-info text-white">
-                <div class="card-body">
-                  <h3 class="card-title">{{ totalFitcoin }}</h3>
-                  <p class="card-text">Total FitCoin Earned</p>
-                </div>
-              </div>
-            </div>
-            <div v-if="!screenshot" class="col-md-3 col-sm-6 mb-3">
-              <div class="card text-center bg-warning text-dark">
-                <div class="card-body">
-                  <h3 class="card-title">{{ Math.round(achievementRate) }}%</h3>
-                  <p class="card-text">Achievement Rate</p>
                 </div>
               </div>
             </div>
@@ -162,7 +138,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="participant in displayedGoalResults" :key="participant.name" :class="participant.achieved ? 'table-success' : 'table-light'">
+                    <tr v-for="participant in filteredGoalResults" :key="participant.name" :class="participant.achieved ? 'table-success' : 'table-light'">
                       <td class="fw-bold">{{ participant.name }}</td>
                       <td>
                         <span class="badge" :class="participant.achieved ? 'bg-success' : 'bg-secondary'">
@@ -346,31 +322,19 @@ export default {
       if (!this.results || !this.results.goalResults) return 0;
       return this.results.goalResults.filter((p) => !p.achieved).length;
     },
-    totalFitcoin() {
-      if (!this.results || !this.results.goalResults) return 0;
-      return this.results.goalResults.reduce((sum, p) => sum + p.fitcoin, 0);
-    },
-    achievementRate() {
-      if (!this.results || !this.results.goalResults || this.results.goalResults.length === 0) return 0;
-      return (this.achievedCount / this.results.goalResults.length) * 100;
-    },
+    // Sorted by activities logged, then name, so the table reads as a leaderboard.
     filteredGoalResults() {
       if (!this.results || !this.results.goalResults) return [];
+      const goalResults = [...this.results.goalResults].sort((a, b) => b.activities - a.activities || a.name.localeCompare(b.name));
       if (this.goalFilter === "achieved") {
-        return this.results.goalResults.filter((p) => p.achieved);
+        return goalResults.filter((p) => p.achieved);
       } else if (this.goalFilter === "not-achieved") {
-        return this.results.goalResults.filter((p) => !p.achieved);
+        return goalResults.filter((p) => !p.achieved);
       }
-      return this.results.goalResults;
+      return goalResults;
     },
     hasGoals() {
       return !!this.results && Array.isArray(this.results.goalResults) && this.results.goalResults.length > 0;
-    },
-    // The Slack screenshot sorts by activities logged (then name) so it reads as a leaderboard; the web tab keeps
-    // the server's order and its achieved/not-achieved filter.
-    displayedGoalResults() {
-      if (!this.screenshot) return this.filteredGoalResults;
-      return [...this.filteredGoalResults].sort((a, b) => b.activities - a.activities || a.name.localeCompare(b.name));
     },
     hasStreaks() {
       return !!this.results && Array.isArray(this.results.streaks) && this.results.streaks.length > 0;
