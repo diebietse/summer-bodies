@@ -284,6 +284,7 @@ export class Challenge {
           totalElevationGainM: activity.total_elevation_gain,
           eventName: activity.name,
           type: activity.type.toString(),
+          sportType: activity.sport_type ?? activity.type,
         };
         if (Challenge.toOurActivity(event.type) == ActivityType.Other) {
           event.movingTimeS = activity.elapsed_time;
@@ -356,7 +357,7 @@ export class Challenge {
       contestants.set(activity.athleteId, contestant);
 
       const types = activityTypes.get(activity.athleteId) ?? new Set<string>();
-      types.add(activity.type);
+      types.add(activity.sportType);
       activityTypes.set(activity.athleteId, types);
     });
 

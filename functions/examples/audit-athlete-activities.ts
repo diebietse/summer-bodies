@@ -49,7 +49,7 @@ async function printResults() {
       const distance =
         Challenge.toOurActivity(activity.type) === ActivityType.OnFoot ? `, Distance: '${(activity.distance / 1000).toFixed(2)}km'` : "";
       console.log(
-        `Date: '${activity.start_date_local}', Activity name: '${activity.name}', Type: '${activity.type}' , Moving time: '${Math.round(
+        `Date: '${activity.start_date_local}', Activity name: '${activity.name}', Type: '${activity.type}', Sport type: '${activity.sport_type}', Moving time: '${Math.round(
           activity.moving_time / 60,
         )}min', Elapsed time: '${Math.round(activity.elapsed_time / 60)}min'${distance}`,
       );

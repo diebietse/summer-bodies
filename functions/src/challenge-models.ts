@@ -30,7 +30,7 @@ export interface Contestant {
   name: string;
   total: number;
   fitcoin?: number;
-  // Distinct raw Strava activity types (e.g. "Yoga", "Golf") this contestant logged within the grouping - only
+  // Distinct Strava sport types (e.g. "Yoga", "Tennis") this contestant logged within the grouping - only
   // shown for the Other category (Results.vue), where "duration" alone doesn't say what was actually done.
   activityTypes?: string[];
 }
@@ -64,6 +64,8 @@ export interface OurEvent {
   id: string;
   athleteId: string;
   type: string;
+  // Display name of the sport (Strava's sport_type, e.g. "Tennis" where `type` is just "Workout") - never used for scoring.
+  sportType: string;
   distanceM: number;
   movingTimeS: number;
   elapsedTimeS: number;
@@ -106,7 +108,10 @@ export interface Activity {
   elapsed_time: number;
   total_elevation_gain: number;
   average_speed: number;
+  // Strava's legacy type, used for scoring. Newer sports (e.g. Tennis, Padel, Pilates) aren't in its enum and come
+  // back as their closest legacy type - usually "Workout" - so `sport_type` is what names them.
   type: StravaActivityType;
+  sport_type?: string;
   start_date: string;
   // The athlete's local wall-clock start time, formatted with a "Z" suffix even though it isn't UTC.
   start_date_local: string;

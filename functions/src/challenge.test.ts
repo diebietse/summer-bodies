@@ -164,6 +164,17 @@ test("Other category contestants list the distinct activity types behind their t
   assert.deepEqual(duration?.contestants[0].activityTypes, ["Golf", "Yoga"]);
 });
 
+test("Other category names a newer sport by its sport_type, not the legacy Workout type", () => {
+  const athletes = [athlete("1", [{ type: "Workout", sport_type: "Tennis", moving_time: 60 * 60, start_date_local: "2026-10-05T06:00:00Z" }])];
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  const duration = topResults
+    .find((event) => event.name === ActivityType.Other)
+    ?.groupings.find((grouping) => grouping.name === GroupingType.Duration);
+
+  assert.deepEqual(duration?.contestants[0].activityTypes, ["Tennis"]);
+});
+
 test("evaluating the same dates again does not count them twice", () => {
   const athletes = [
     athlete("1", [
