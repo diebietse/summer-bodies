@@ -191,6 +191,29 @@ test("evaluating the same dates again does not count them twice", () => {
   assert.equal(again[0].alive, true);
 });
 
+test("an athlete registering after the first week can't start a streak, even with a qualifying run", () => {
+  const athletes = [
+    athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-12T06:00:00Z" }]),
+    athlete("2", [{ type: "Run", distance: 1200, start_date_local: "2026-10-12T06:00:00Z" }]),
+  ];
+  const previousStreaks = new Map<string, StreakState>([
+    ["1", { athleteId: "1", name: "Test 1", alive: true, currentStreak: 7, lastEvaluatedDate: "2026-10-11" }],
+  ]);
+  const [, late] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12"]);
+
+  assert.equal(late.alive, false);
+  assert.equal(late.currentStreak, 0);
+});
+
+test("if no week has been stored yet, every athlete can still start a streak", () => {
+  // e.g. the first week's job failed - nobody is treated as a late starter.
+  const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-12T06:00:00Z" }])];
+  const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-12"]);
+
+  assert.equal(result.alive, true);
+  assert.equal(result.currentStreak, 1);
+});
+
 test("only dates after the last evaluated one are counted", () => {
   const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-07T06:00:00Z" }])];
   const previousStreaks = new Map<string, StreakState>([

@@ -143,6 +143,11 @@ export class Challenge {
   //
   // Dates up to the athlete's `lastEvaluatedDate` are skipped, so passing the same dates again is a no-op.
   //
+  // A streak can only be started from the challenge's first day: an athlete with no stored streak while others
+  // already have one registered after the first week was evaluated, so they're stored as eliminated with no days
+  // (still free to take part in everything else). Keyed on other athletes' records rather than on the dates, so
+  // if the first week's job failed for everyone, everyone still starts together.
+  //
   // `challengeDates` is deliberately the caller's responsibility: activities can be uploaded to Strava late (up to
   // Sunday 23:59 for that week, per the challenge rules), so callers should only pass dates whose upload window has
   // fully closed - see Bot.finalizeStreaks, which only evaluates a week once that week has ended.
@@ -153,7 +158,8 @@ export class Challenge {
   ): StreakState[] {
     return athletes.map((athlete) => {
       const name = `${athlete.firstname} ${athlete.lastname}`;
-      const previous = previousStreaks.get(athlete.id) ?? { athleteId: athlete.id, name, alive: true, currentStreak: 0 };
+      const lateStarter = previousStreaks.size > 0 && !previousStreaks.has(athlete.id);
+      const previous = previousStreaks.get(athlete.id) ?? { athleteId: athlete.id, name, alive: !lateStarter, currentStreak: 0 };
 
       if (!previous.alive) return { ...previous, name };
 
