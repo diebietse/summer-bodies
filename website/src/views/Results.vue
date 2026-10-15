@@ -78,7 +78,7 @@
                             </td>
                             <td class="fw-bold">{{ contestant.name }}</td>
                             <td>{{ formatValue(contestant.total, grouping.unit) }}</td>
-                            <td v-if="challenge.name === otherCategory" class="text-muted small">{{ (contestant.activityTypes || []).join(", ") }}</td>
+                            <td v-if="challenge.name === otherCategory" class="text-muted small">{{ (contestant.activityTypes || []).map(formatSportType).join(", ") }}</td>
                             <td>
                               <span class="badge bg-warning text-dark">{{ contestant.fitcoin }}</span>
                             </td>
@@ -287,6 +287,13 @@ const VALID_TABS = ["challenges", "goals", "streak", "athletes"];
 // than importing across the website/functions package boundary for one string.
 const OTHER_CATEGORY = "Other";
 
+// Strava sport types whose generic word-split ("High Intensity Interval Training", "EBike Ride") reads badly.
+const SPORT_TYPE_NAMES = {
+  HighIntensityIntervalTraining: "HIIT",
+  EBikeRide: "E-Bike Ride",
+  EMountainBikeRide: "E-Mountain Bike Ride",
+};
+
 export default {
   name: "Results",
   props: {
@@ -373,6 +380,10 @@ export default {
     },
   },
   methods: {
+    // Strava sport types are joined words ("TableTennis") - shown with spaces ("Table Tennis").
+    formatSportType(type) {
+      return SPORT_TYPE_NAMES[type] ?? type.replace(/([a-z])([A-Z])/g, "$1 $2");
+    },
     formatValue(value, unit) {
       if (unit === "min/km") {
         return `${value.toFixed(2)}`;
