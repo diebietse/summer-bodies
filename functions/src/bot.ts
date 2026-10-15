@@ -1,6 +1,6 @@
 import { Firestore, SummerBodiesConfig } from "./firestore";
 import { GetAllAthletesActivitiesResult, Strava } from "./strava";
-import { Slack } from "./slack";
+import { ResultsImage, Slack } from "./slack";
 import { Format } from "./format";
 import { AthleteWithActivities, ChallengeResults, ContestantFitcoin, RegisteredAthlete, StreakState } from "./challenge-models";
 import { Challenge, IgnoredDuplicate } from "./challenge";
@@ -100,14 +100,9 @@ export class Bot {
       await Firestore.storeResults(id, JSON.stringify(results));
 
       const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
-      const screenshot = await Puppeteer.screenshot(`${resultsUrl}?screenshot=true`);
+      const images = await this.screenshotResults(resultsUrl, `daily-update-${id}`);
 
-      // Upload screenshot to Firebase Storage
-      const screenshotFileName = `daily-update-${id}`;
-      const screenshotUrl = await uploadPngToStorage(screenshot, screenshotFileName);
-      console.log(`Screenshot uploaded to: ${screenshotUrl}`);
-
-      await this.publishInProgress(slack, resultsUrl, screenshotUrl);
+      await this.publishInProgress(slack, resultsUrl, images);
     });
   }
 
@@ -146,14 +141,9 @@ export class Bot {
       await Firestore.storeResults(id, JSON.stringify(results));
 
       const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
-      const screenshot = await Puppeteer.screenshot(`${resultsUrl}?screenshot=true`);
+      const images = await this.screenshotResults(resultsUrl, `weekly-results-${id}`);
 
-      // Upload screenshot to Firebase Storage
-      const screenshotFileName = `weekly-results-${id}`;
-      const screenshotUrl = await uploadPngToStorage(screenshot, screenshotFileName);
-      console.log(`Screenshot uploaded to: ${screenshotUrl}`);
-
-      await this.publishFinal(slack, resultsUrl, screenshotUrl);
+      await this.publishFinal(slack, resultsUrl, images);
       await this.publishWeeklyFitcoin(slack, results);
       await this.publishTotalFitcoin(slack);
     });
@@ -240,12 +230,25 @@ export class Bot {
     return { ...results, athletesWithActivities: deduplicated, ignoredDuplicates: ignored };
   }
 
-  private static async publishInProgress(slack: Slack, resultsUrl: string, screenshotUrl: string) {
-    await slack.postResults(`New in progress results for ${nowPretty()}!\nSee the screenshot below`, screenshotUrl, resultsUrl);
+  // Screenshots each section of the results page separately (challenges, goals, streak) and uploads them to
+  // Firebase Storage, so Slack shows several readable images instead of one tall, scaled-down page.
+  private static async screenshotResults(resultsUrl: string, fileNamePrefix: string): Promise<ResultsImage[]> {
+    const sections = await Puppeteer.screenshotSections(`${resultsUrl}?screenshot=true`);
+    return Promise.all(
+      sections.map(async ({ name, title, png }) => {
+        const url = await uploadPngToStorage(png, `${fileNamePrefix}-${name}`);
+        console.log(`Screenshot '${name}' uploaded to: ${url}`);
+        return { title, url };
+      }),
+    );
   }
 
-  private static async publishFinal(slack: Slack, resultsUrl: string, screenshotUrl: string) {
-    await slack.postResults(`The final results for ${lastWeekPretty()} are out!\nSee the screenshot below`, screenshotUrl, resultsUrl);
+  private static async publishInProgress(slack: Slack, resultsUrl: string, images: ResultsImage[]) {
+    await slack.postResults(`New in progress results for ${nowPretty()}!\nSee the screenshots below`, images, resultsUrl);
+  }
+
+  private static async publishFinal(slack: Slack, resultsUrl: string, images: ResultsImage[]) {
+    await slack.postResults(`The final results for ${lastWeekPretty()} are out!\nSee the screenshots below`, images, resultsUrl);
   }
 
   private static async publishWeeklyFitcoin(slack: Slack, results: ChallengeResults) {

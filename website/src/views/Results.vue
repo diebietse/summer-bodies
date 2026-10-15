@@ -42,8 +42,11 @@
         </ul>
       </div>
 
+      <!-- In screenshot mode every section below with data-screenshot renders at once, and the Slack bot screenshots
+           each one as its own image (see functions/src/puppeteer.ts), titled by data-screenshot-title. -->
+
       <!-- Challenge Results Tab -->
-      <div v-if="activeTab === 'challenges' || screenshot" class="tab-content">
+      <div v-if="activeTab === 'challenges' || screenshot" class="tab-content" data-screenshot="challenges" data-screenshot-title="Challenge Results">
         <div class="challenge-results">
           <div v-for="challenge in results.topResults" :key="challenge.name" class="challenge-section">
             <h2 class="challenge-title">{{ challenge.name }}</h2>
@@ -95,7 +98,7 @@
       </div>
 
       <!-- Goal Achievements Tab -->
-      <div v-if="activeTab === 'goals'" class="tab-content">
+      <div v-if="activeTab === 'goals' || (screenshot && hasGoals)" class="tab-content" data-screenshot="goals" data-screenshot-title="Goal Achievements">
         <div class="goal-results">
           <h2 class="section-title">Goal Achievements</h2>
 
@@ -136,7 +139,7 @@
           </div>
 
           <!-- Filter Buttons -->
-          <div class="mb-3 text-center">
+          <div v-if="!screenshot" class="mb-3 text-center">
             <div class="btn-group" role="group">
               <button type="button" class="btn btn-outline-primary" :class="{ active: goalFilter === 'all' }" @click="goalFilter = 'all'">All ({{ results.goalResults.length }})</button>
               <button type="button" class="btn btn-outline-success" :class="{ active: goalFilter === 'achieved' }" @click="goalFilter = 'achieved'">Achieved ({{ achievedCount }})</button>
@@ -180,9 +183,8 @@
         </div>
       </div>
 
-      <!-- Streak Challenge Tab - also shown in screenshot mode (below Challenge Results), so the daily/weekly
-           Slack screenshot surfaces who's still surviving the 1km-a-day streak, not just the leaderboards. -->
-      <div v-if="hasStreaks && (activeTab === 'streak' || screenshot)" class="tab-content">
+      <!-- Streak Challenge Tab -->
+      <div v-if="hasStreaks && (activeTab === 'streak' || screenshot)" class="tab-content" data-screenshot="streak" data-screenshot-title="Streak Challenge">
         <div class="streak-results">
           <h2 class="section-title">1km-a-day Streak Challenge</h2>
           <p v-if="isResultsInProgress" class="text-muted text-center mb-4">On track so far this week - not final. Missing a day doesn't eliminate you until this week's Sunday 23:59 upload deadline has passed.</p>
@@ -359,6 +361,9 @@ export default {
         return this.results.goalResults.filter((p) => !p.achieved);
       }
       return this.results.goalResults;
+    },
+    hasGoals() {
+      return !!this.results && Array.isArray(this.results.goalResults) && this.results.goalResults.length > 0;
     },
     hasStreaks() {
       return !!this.results && Array.isArray(this.results.streaks) && this.results.streaks.length > 0;
@@ -543,6 +548,12 @@ img {
    cards have room for longer names. */
 .results-screenshot {
   max-width: 1400px;
+}
+
+/* Each screenshot section becomes its own Slack image, clipped to exactly its own box - this padding is what keeps
+   its content off the image's edges. */
+.results-screenshot [data-screenshot] {
+  padding: 16px 0;
 }
 
 .nav-tabs-container {

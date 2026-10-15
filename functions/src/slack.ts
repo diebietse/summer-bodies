@@ -22,7 +22,8 @@ export class Slack {
     });
   }
 
-  async postResults(mainMessage: string, imageUrl: string, resultsUrl: string) {
+  // One message with an image block per section (e.g. Challenge Results, Goal Achievements, Streak Challenge).
+  async postResults(mainMessage: string, images: ResultsImage[], resultsUrl: string) {
     await this.postBlocks([
       {
         type: "section",
@@ -31,11 +32,12 @@ export class Slack {
           text: mainMessage,
         },
       },
-      {
+      ...images.map((image) => ({
         type: "image",
-        image_url: imageUrl,
-        alt_text: "Results",
-      },
+        title: { type: "plain_text", text: image.title },
+        image_url: image.url,
+        alt_text: image.title,
+      })),
       {
         type: "section",
         text: {
@@ -45,4 +47,9 @@ export class Slack {
       },
     ]);
   }
+}
+
+export interface ResultsImage {
+  title: string;
+  url: string;
 }
