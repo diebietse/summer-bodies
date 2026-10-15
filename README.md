@@ -57,7 +57,7 @@ To use the Strava API you will need an Oauth refresh token, to get that you will
 > **Note:** Strava no longer allows free accounts to create API applications. You need a paid Strava subscription on the account used to register the application before you can get a client ID and secret.
 
 The scope of the Strava OAuth token must be set to `read,activity:read,activity:write`.
-Write permission is needed to create the weekly placeholder event
+`activity:write` was for a weekly placeholder event the bot no longer creates - nothing writes to Strava any more.
 
 More details on [Strava authentication][strava-oauth] can be found on their website.
 
@@ -79,7 +79,19 @@ npm run ts ./examples/remove-athlete.ts -- --id 12345
 npm run ts ./examples/remove-athlete.ts -- --name "First Last"
 ```
 
-This also fixes the more common reason to need it: a revoked or otherwise invalid refresh token fails that one athlete's Strava fetch, and since a single athlete's failure fails the whole batch (see `getAllAthletesActivities` in [bot.ts][bot]), daily/weekly results generation silently stops for everyone until the athlete is removed.
+This also fixes the more common reason to need it: a revoked or otherwise invalid refresh token fails that one athlete's Strava fetch, and since a single athlete's failure fails the whole weekly batch (see `publishWeeklyResults` in [bot.ts][bot]), weekly results stop for everyone until the athlete is removed. Daily updates carry on without that athlete and post a warning to the errors channel.
+
+## Re-running a Failed Job
+
+If a scheduled daily update or weekly results run failed (e.g. after removing an athlete as above), run the same job locally with [publish-daily-updates.ts][publish-daily-updates] or [publish-weekly-results.ts][publish-weekly-results]. Slack posts go to `#test-bot` unless you pass another channel or `--live` (the configured channels):
+
+```console
+npm run ts ./examples/publish-daily-updates.ts            # check it in #test-bot first
+npm run ts ./examples/publish-daily-updates.ts -- --live
+npm run ts ./examples/publish-weekly-results.ts -- --live
+```
+
+The weekly script stores last week's real FitCoin and streaks whichever channel it posts to, so only run it when the Monday run failed (re-running after a successful run can leave stale FitCoin behind), and before the next Monday, since "last week" is relative to now.
 
 ## Local Dev
 
@@ -96,6 +108,8 @@ For local development, service account credentials can be created by following [
 [upload-config]: functions/examples/upload-config.ts
 [upload-branding]: functions/examples/upload-branding.ts
 [remove-athlete]: functions/examples/remove-athlete.ts
+[publish-daily-updates]: functions/examples/publish-daily-updates.ts
+[publish-weekly-results]: functions/examples/publish-weekly-results.ts
 [bot]: functions/src/bot.ts
 [website-readme]: website/README.md
 [create-strava-token]: functions/examples/create-strava-token.ts
