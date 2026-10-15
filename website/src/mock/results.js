@@ -126,9 +126,10 @@ export const mockResults = {
   streaks: [
     { athleteId: "1", name: "Alex Carter", alive: true, currentStreak: 12 },
     { athleteId: "2", name: "Jamie Lee", alive: true, currentStreak: 12 },
-    { athleteId: "3", name: "Morgan Reyes", alive: true, currentStreak: 9 },
+    { athleteId: "7", name: "Riley Cohen", alive: false, currentStreak: 11 },
+    { athleteId: "3", name: "Morgan Reyes", alive: true, currentStreak: 12 },
     { athleteId: "4", name: "Casey Nguyen", alive: false, currentStreak: 8 },
-    { athleteId: "5", name: "Taylor Brooks", alive: true, currentStreak: 5 },
+    { athleteId: "5", name: "Taylor Brooks", alive: true, currentStreak: 12 },
     { athleteId: "6", name: "Jordan Blake", alive: false, currentStreak: 0 },
   ],
   athletes: [{ name: "Alex Carter" }, { name: "Casey Nguyen" }, { name: "Jamie Lee" }, { name: "Jordan Blake" }, { name: "Morgan Reyes" }, { name: "Riley Cohen" }, { name: "Taylor Brooks" }],

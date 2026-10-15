@@ -102,8 +102,8 @@
         <div class="goal-results">
           <h2 class="section-title">Goal Achievements</h2>
 
-          <!-- Summary Stats -->
-          <div class="row mb-4">
+          <!-- Summary Stats - just the achieved count in the Slack screenshot -->
+          <div class="row mb-4" :class="{ 'justify-content-center': screenshot }">
             <div class="col-md-3 col-sm-6 mb-3">
               <div class="card text-center bg-success text-white">
                 <div class="card-body">
@@ -112,7 +112,7 @@
                 </div>
               </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-3">
+            <div v-if="!screenshot" class="col-md-3 col-sm-6 mb-3">
               <div class="card text-center bg-danger text-white">
                 <div class="card-body">
                   <h3 class="card-title">{{ notAchievedCount }}</h3>
@@ -120,7 +120,7 @@
                 </div>
               </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-3">
+            <div v-if="!screenshot" class="col-md-3 col-sm-6 mb-3">
               <div class="card text-center bg-info text-white">
                 <div class="card-body">
                   <h3 class="card-title">{{ totalFitcoin }}</h3>
@@ -128,7 +128,7 @@
                 </div>
               </div>
             </div>
-            <div class="col-md-3 col-sm-6 mb-3">
+            <div v-if="!screenshot" class="col-md-3 col-sm-6 mb-3">
               <div class="card text-center bg-warning text-dark">
                 <div class="card-body">
                   <h3 class="card-title">{{ Math.round(achievementRate) }}%</h3>
@@ -162,7 +162,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="participant in filteredGoalResults" :key="participant.name" :class="participant.achieved ? 'table-success' : 'table-light'">
+                    <tr v-for="participant in displayedGoalResults" :key="participant.name" :class="participant.achieved ? 'table-success' : 'table-light'">
                       <td class="fw-bold">{{ participant.name }}</td>
                       <td>
                         <span class="badge" :class="participant.achieved ? 'bg-success' : 'bg-secondary'">
@@ -222,10 +222,10 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="(streak, index) in sortedStreaks" :key="streak.athleteId" :class="streak.alive ? 'table-success' : 'table-light'">
+                    <tr v-for="streak in displayedStreaks" :key="streak.athleteId" :class="streak.alive ? 'table-success' : 'table-light'">
                       <td>
-                        <span class="position-badge" :class="getPositionClass(rankAt(sortedStreaks, index, 'currentStreak'))">
-                          {{ rankAt(sortedStreaks, index, "currentStreak") }}
+                        <span class="position-badge" :class="getPositionClass(streakRank(streak))">
+                          {{ streakRank(streak) }}
                         </span>
                       </td>
                       <td class="fw-bold">{{ streak.name }}</td>
@@ -242,6 +242,7 @@
             </div>
           </div>
 
+          <p v-if="hiddenStreakCount > 0" class="text-muted mt-3 small text-center">{{ hiddenStreakCount }} earlier {{ hiddenStreakCount === 1 ? "elimination" : "eliminations" }} not shown.</p>
           <p class="text-muted mt-3 small text-center">Miss a day of at least 1km on foot and you're out - eliminations are only final once the week's Sunday 23:59 upload deadline has passed.</p>
         </div>
       </div>
@@ -365,6 +366,12 @@ export default {
     hasGoals() {
       return !!this.results && Array.isArray(this.results.goalResults) && this.results.goalResults.length > 0;
     },
+    // The Slack screenshot sorts by activities logged (then name) so it reads as a leaderboard; the web tab keeps
+    // the server's order and its achieved/not-achieved filter.
+    displayedGoalResults() {
+      if (!this.screenshot) return this.filteredGoalResults;
+      return [...this.filteredGoalResults].sort((a, b) => b.activities - a.activities || a.name.localeCompare(b.name));
+    },
     hasStreaks() {
       return !!this.results && Array.isArray(this.results.streaks) && this.results.streaks.length > 0;
     },
@@ -373,6 +380,16 @@ export default {
       // Athletes eliminated on their very first evaluated day never accumulated any streak days - showing them
       // as "Eliminated" with 0 days survived reads as a real elimination rather than simply not having started.
       return [...this.results.streaks].filter((s) => s.currentStreak > 0).sort((a, b) => b.currentStreak - a.currentStreak);
+    },
+    // The Slack screenshot leaves out athletes eliminated more than 2 days ago - i.e. whose days survived trail
+    // the longest streak by more than 2 - so it stays about who's still in it (and who only just went out).
+    displayedStreaks() {
+      if (!this.screenshot || this.sortedStreaks.length === 0) return this.sortedStreaks;
+      const longest = this.sortedStreaks[0].currentStreak;
+      return this.sortedStreaks.filter((s) => s.alive || s.currentStreak >= longest - 2);
+    },
+    hiddenStreakCount() {
+      return this.sortedStreaks.length - this.displayedStreaks.length;
     },
     stillInCount() {
       return this.sortedStreaks.filter((s) => s.alive).length;
@@ -431,6 +448,10 @@ export default {
       let first = index;
       while (first > 0 && list[first - 1][key] === list[index][key]) first--;
       return first + 1;
+    },
+    // Ranked within every streak, not just the displayed ones, so hiding older eliminations doesn't shift positions.
+    streakRank(streak) {
+      return this.rankAt(this.sortedStreaks, this.sortedStreaks.indexOf(streak), "currentStreak");
     },
     getRowClass(rank) {
       if (rank === 1) return "table-warning"; // Gold
