@@ -169,6 +169,8 @@
               </div>
             </div>
           </div>
+
+          <p class="text-muted mt-3 small text-center">Log 3 activities of 30 minutes or longer in the week, of any type, to earn 10 FitCoin. Time is moving time, except for Other activities, where it's elapsed time (pauses included).</p>
         </div>
       </div>
 
@@ -177,6 +179,7 @@
         <div class="challenge-results">
           <div v-for="challenge in results.topResults" :key="challenge.name" class="challenge-section">
             <h2 class="challenge-title">{{ challenge.name }}</h2>
+            <p v-if="challengeDescriptions[challenge.name]" class="text-muted text-center mb-4">{{ challengeDescriptions[challenge.name] }}</p>
 
             <div class="row justify-content-center">
               <div v-for="grouping in challenge.groupings" :key="grouping.name" class="mb-4" :class="challenge.groupings.length === 1 ? 'col-12 col-md-8 col-lg-6' : 'col-md-6 col-lg-4'">
@@ -221,6 +224,9 @@
               </div>
             </div>
           </div>
+
+          <p class="text-muted small text-center">The top of each table earns FitCoin, from 5 down to 1 (10 down to 1 for Other) - with lots of entrants several people share each level, and ties earn the same.</p>
+          <p class="text-muted small text-center">Activities count for the week they start in (Monday to Sunday, South African time) and need to be on Strava by Sunday 23:59. The same activity recorded twice (e.g. on a watch and a phone) only counts once - the shorter recording is kept.</p>
         </div>
       </div>
 
@@ -267,6 +273,14 @@ const VALID_TABS = ["challenges", "goals", "streak", "athletes"];
 // than importing across the website/functions package boundary for one string.
 const OTHER_CATEGORY = "Other";
 
+// Shown under each challenge's heading - keep in sync with the scoring in functions/src/challenge.ts.
+const CHALLENGE_DESCRIPTIONS = {
+  "On Foot": "Strava runs, walks and hikes. Duration is moving time.",
+  "On Wheels": "Strava rides, virtual rides and wheelchair activities. Duration is moving time.",
+  "Mile Challenge": "Any on-foot activity (run, walk or hike) of 1.5 to 2km. Attempts counts each one; Pace is your fastest, using elapsed time, so pauses count.",
+  [OTHER_CATEGORY]: "Every other Strava activity type, e.g. yoga, tennis or weight training. Duration is elapsed time - start to finish, pauses included.",
+};
+
 // Strava sport types whose generic word-split ("High Intensity Interval Training", "EBike Ride") reads badly.
 const SPORT_TYPE_NAMES = {
   HighIntensityIntervalTraining: "HIIT",
@@ -295,6 +309,7 @@ export default {
       hideTabs: false,
       appName: APP_NAME,
       otherCategory: OTHER_CATEGORY,
+      challengeDescriptions: CHALLENGE_DESCRIPTIONS,
     };
   },
   computed: {
