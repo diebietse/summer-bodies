@@ -367,8 +367,10 @@ export class Challenge {
       activityTypes.set(activity.athleteId, types);
     });
 
+    // Rounded before sorting, so ranks and ties (which share FitCoin) match the totals shown.
     let c = Array.from(contestants, ([athleteId, value]) => ({
       ...value,
+      total: this.roundTotal(value.total, type),
       activityTypes: Array.from(activityTypes.get(athleteId) ?? []).sort(),
     }));
     c = c.sort(this.compareContestant);
@@ -382,19 +384,28 @@ export class Challenge {
     return grouping;
   }
 
+  // Exact per activity - only the total is rounded (roundTotal), so many short activities aren't each rounded
+  // down (or up) to a whole km/minute/metre.
   private static getGroupingValue(activity: OurEvent, type: GroupingType): number {
     switch (type) {
       case GroupingType.Distance:
-        return Math.round(activity.distanceM / 1000);
+        return activity.distanceM / 1000;
       case GroupingType.Duration:
-        return Math.round(activity.movingTimeS / 60);
+        return activity.movingTimeS / 60;
       case GroupingType.Elevation:
-        return Math.round(activity.totalElevationGainM);
+        return activity.totalElevationGainM;
       case GroupingType.Attempts:
         return 1;
       case GroupingType.Pace: // In min/km
         return activity.elapsedTimeS / 60 / (activity.distanceM / 1000);
     }
+  }
+
+  // Distance to 0.1km, duration and elevation to whole minutes/metres; pace is shown to 2 decimals by the website.
+  private static roundTotal(total: number, type: GroupingType): number {
+    if (type === GroupingType.Distance) return Math.round(total * 10) / 10;
+    if (type === GroupingType.Pace) return total;
+    return Math.round(total);
   }
 
   private static compareStravaEvents(a: ChallengeEvent, b: ChallengeEvent) {

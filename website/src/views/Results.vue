@@ -389,6 +389,9 @@ export default {
     formatValue(value, unit) {
       if (unit === "min/km") {
         return `${value.toFixed(2)}`;
+      } else if (unit === "km" && typeof value === "number") {
+        // One decimal, also for older results, whose distances were whole km.
+        return value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
       } else if (typeof value === "number") {
         return value.toLocaleString();
       }

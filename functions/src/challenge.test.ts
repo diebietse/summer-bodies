@@ -148,6 +148,35 @@ test("Mile Challenge is included once someone logs a mile-range run", () => {
   );
 });
 
+test("distance adds up the exact distances and rounds only the total, to 0.1km", () => {
+  const walks = [1, 2, 3, 4, 5].map((day) => ({ type: "Walk", distance: 1400, start_date_local: `2026-10-0${day}T06:00:00Z` }));
+  const athletes = [athlete("1", [...walks, { type: "Walk", distance: 400, start_date_local: "2026-10-06T06:00:00Z" }])];
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  const distance = topResults
+    .find((event) => event.name === ActivityType.OnFoot)
+    ?.groupings.find((grouping) => grouping.name === GroupingType.Distance);
+
+  // Rounding each walk first gave 5 x 1km + 0km = 5km.
+  assert.equal(distance?.contestants[0].total, 7.4);
+});
+
+test("athletes whose distances round to the same total tie and share FitCoin", () => {
+  const athletes = [
+    athlete("1", [{ type: "Run", distance: 10040, start_date_local: "2026-10-05T06:00:00Z" }]),
+    athlete("2", [{ type: "Run", distance: 10010, start_date_local: "2026-10-05T06:00:00Z" }]),
+  ];
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  const [first, second] = topResults
+    .find((event) => event.name === ActivityType.OnFoot)!
+    .groupings.find((grouping) => grouping.name === GroupingType.Distance)!.contestants;
+
+  assert.equal(first.total, 10);
+  assert.equal(second.total, 10);
+  assert.equal(first.fitcoin, second.fitcoin);
+});
+
 test("Mile Challenge includes both ends of the 1.5-2km range", () => {
   const athletes = [
     athlete("1", [
