@@ -148,6 +148,24 @@ test("Mile Challenge is included once someone logs a mile-range run", () => {
   );
 });
 
+test("Mile Challenge includes both ends of the 1.5-2km range", () => {
+  const athletes = [
+    athlete("1", [
+      { type: "Run", distance: 1500, start_date_local: "2026-10-05T06:00:00Z" },
+      { type: "Walk", distance: 2000, start_date_local: "2026-10-06T06:00:00Z" },
+      { type: "Run", distance: 1499, start_date_local: "2026-10-07T06:00:00Z" },
+      { type: "Run", distance: 2001, start_date_local: "2026-10-08T06:00:00Z" },
+    ]),
+  ];
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  const attempts = topResults
+    .find((event) => event.name === ActivityType.MileChallenge)
+    ?.groupings.find((grouping) => grouping.name === GroupingType.Attempts);
+
+  assert.equal(attempts?.contestants[0].total, 2);
+});
+
 test("Other category contestants list the distinct activity types behind their total", () => {
   const athletes = [
     athlete("1", [
