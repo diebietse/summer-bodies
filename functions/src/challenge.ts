@@ -401,10 +401,13 @@ export class Challenge {
     }
   }
 
-  // Distance to 0.1km, duration and elevation to whole minutes/metres; pace is shown to 2 decimals by the website.
+  // Distance to 0.1km, pace (in decimal minutes) to whole seconds - the website shows it as min:sec - and duration
+  // and elevation to whole minutes/metres.
+  // TODO(2027): store pace as whole seconds per km - then this is a plain Math.round and the website formats seconds
+  // directly. The results data is cleared after each challenge, so there's no old format to keep supporting.
   private static roundTotal(total: number, type: GroupingType): number {
     if (type === GroupingType.Distance) return Math.round(total * 10) / 10;
-    if (type === GroupingType.Pace) return total;
+    if (type === GroupingType.Pace) return Math.round(total * 60) / 60;
     return Math.round(total);
   }
 

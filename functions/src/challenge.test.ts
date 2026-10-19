@@ -177,6 +177,23 @@ test("athletes whose distances round to the same total tie and share FitCoin", (
   assert.equal(first.fitcoin, second.fitcoin);
 });
 
+test("mile paces that round to the same second tie and share FitCoin", () => {
+  // 1.6km in 369.6s and 369.9s: 3:51.00 and 3:51.19 per km, both shown as 3:51.
+  const athletes = [
+    athlete("1", [{ type: "Run", distance: 1600, elapsed_time: 369.6, start_date_local: "2026-10-05T06:00:00Z" }]),
+    athlete("2", [{ type: "Run", distance: 1600, elapsed_time: 369.9, start_date_local: "2026-10-05T06:00:00Z" }]),
+  ];
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  const [first, second] = topResults
+    .find((event) => event.name === ActivityType.MileChallenge)!
+    .groupings.find((grouping) => grouping.name === GroupingType.Pace)!.contestants;
+
+  assert.equal(first.total * 60, 231);
+  assert.equal(second.total * 60, 231);
+  assert.equal(first.fitcoin, second.fitcoin);
+});
+
 test("Mile Challenge includes both ends of the 1.5-2km range", () => {
   const athletes = [
     athlete("1", [
