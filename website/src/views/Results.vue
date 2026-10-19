@@ -187,7 +187,7 @@
                   <div class="card-header">
                     <h5 class="card-title mb-0">
                       {{ grouping.name }}
-                      <span v-if="grouping.unit" class="text-muted small">({{ grouping.unit }})</span>
+                      <span v-if="grouping.unit && grouping.unit !== 'min'" class="text-muted small">({{ grouping.unit }})</span>
                     </h5>
                   </div>
                   <div class="card-body p-0">
@@ -388,7 +388,12 @@ export default {
     },
     formatValue(value, unit) {
       if (unit === "min/km") {
-        return `${value.toFixed(2)}`;
+        // Pace is stored in decimal minutes (3.85) - shown as min:sec (3:51). Rounded to whole seconds first so
+        // e.g. 3.999 shows as 4:00, not 3:60.
+        const seconds = Math.round(value * 60);
+        return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+      } else if (unit === "min" && typeof value === "number") {
+        return this.formatTime(value);
       } else if (unit === "km" && typeof value === "number") {
         // One decimal, also for older results, whose distances were whole km.
         return value.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -397,14 +402,11 @@ export default {
       }
       return value;
     },
+    // Whole minutes as "6h52min" (minutes padded, "4h05min", so a column of times lines up), or "52min" under an hour.
     formatTime(minutes) {
-      if (minutes === 0) return "0 min";
       const hours = Math.floor(minutes / 60);
       const mins = minutes % 60;
-      if (hours > 0) {
-        return `${hours}h ${mins}m`;
-      }
-      return `${mins}m`;
+      return hours > 0 ? `${hours}h${String(mins).padStart(2, "0")}min` : `${mins}min`;
     },
     formatDateRange() {
       if (!this.results || !this.results.startDate || !this.results.endDate) {

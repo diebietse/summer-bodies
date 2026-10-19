@@ -106,9 +106,9 @@ export const mockResults = {
           name: "Pace",
           unit: "min/km",
           contestants: [
-            { name: "Morgan Reyes", total: 4.15, fitcoin: 5 },
-            { name: "Alex Carter", total: 4.42, fitcoin: 4 },
-            { name: "Taylor Brooks", total: 5.05, fitcoin: 3 },
+            { name: "Morgan Reyes", total: 4.25, fitcoin: 5 },
+            { name: "Alex Carter", total: 4.7, fitcoin: 4 },
+            { name: "Taylor Brooks", total: 5.0833, fitcoin: 3 },
           ],
         },
       ],
