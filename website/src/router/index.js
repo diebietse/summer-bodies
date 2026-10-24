@@ -19,6 +19,13 @@ const routes = [
     name: "Results",
     component: Results,
   },
+  {
+    // The id is the secret part of the link the snapshot script prints - see Draw.vue.
+    path: "/draw/:id",
+    name: "Draw",
+    // Lazy, so the drand/BLS crypto it needs isn't downloaded by every results page.
+    component: () => import("../views/Draw.vue"),
+  },
 ];
 
 // Dev-only route for local visual testing with mock data (see views/Preview.vue and README.md "Local
@@ -29,6 +36,11 @@ if (import.meta.env.DEV) {
     path: "/preview",
     name: "Preview",
     component: () => import("../views/Preview.vue"),
+  });
+  routes.push({
+    path: "/preview-draw",
+    name: "DrawPreview",
+    component: () => import("../views/DrawPreview.vue"),
   });
 }
 

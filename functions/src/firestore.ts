@@ -202,6 +202,24 @@ export class Firestore {
     }
     return null;
   }
+
+  // The lucky draw snapshot (see draw.ts), stored as the exact JSON text whose SHA-256 fingerprint gets announced.
+  // Keyed by challenge start date so create() fails if one already exists - once the fingerprint is out, the snapshot
+  // must never change - and readable only by its random `id`, the secret in the /draw/<id> link.
+  static async createDrawSnapshot(challengeStartDate: string, id: string, snapshot: string): Promise<void> {
+    await db.collection("draws").doc(challengeStartDate).create({ id, snapshot });
+  }
+
+  static async getDrawSnapshot(id: string): Promise<string | null> {
+    const docs = await db.collection("draws").where("id", "==", id).limit(1).get();
+    return docs.empty ? null : (docs.docs[0].data().snapshot ?? null);
+  }
+
+  // Whether the weekly results for the week labelled `weekLabel` (see util.weekLabel) have stored any FitCoin.
+  static async hasWeeklyFitcoin(weekLabel: string): Promise<boolean> {
+    const athletes = await db.collection("fitcoin").doc(weekLabel).collection("athletes").limit(1).get();
+    return !athletes.empty;
+  }
 }
 
 export interface SummerBodiesConfig {

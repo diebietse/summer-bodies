@@ -53,6 +53,23 @@ export class Api {
       }
     });
 
+    // A lucky draw snapshot by its secret link id, sent as the exact stored text so the page can check its SHA-256
+    // fingerprint against the announced one.
+    this.router.get("/draw/:id", async (req: Request, res: Response) => {
+      try {
+        const id = String(req.params.id);
+        const snapshot = await Firestore.getDrawSnapshot(id);
+        if (snapshot === null) {
+          res.status(404).json({ error: "Lucky draw not found" });
+          return;
+        }
+        res.status(200).type("application/json").send(snapshot);
+      } catch (error) {
+        await reportError("Error fetching the lucky draw snapshot", error);
+        res.status(400).json({ error: errorMessage(error) });
+      }
+    });
+
     this.router.get("/strava-config", async (_req: Request, res: Response) => {
       // The OAuth client_id is not a secret - it's already visible in the authorize URL the browser navigates
       // to. Serving it from here (instead of hardcoding it in the website) keeps the website's OAuth redirect

@@ -93,6 +93,24 @@ npm run ts ./examples/publish-weekly-results.ts -- --live
 
 The weekly script stores last week's real FitCoin and streaks whichever channel it posts to, so only run it when the Monday run failed (re-running after a successful run can leave stale FitCoin behind), and before the next Monday, since "last week" is relative to now.
 
+## Lucky Draw
+
+After the challenge, FitCoin becomes tickets in a lucky draw for 20 prizes (one per person). It's built so anyone can check the result without having to trust whoever runs it:
+
+1. **Freeze the entries** once the final weekly results have run (the Monday after the challenge). Pick the draw time - when everyone's draw page draws the winners:
+
+   ```console
+   npm run ts ./examples/create-draw-snapshot.ts -- 2026-11-06T12:00:00+02:00 --dry-run   # check it first
+   npm run ts ./examples/create-draw-snapshot.ts -- 2026-11-06T12:00:00+02:00
+   ```
+
+   [create-draw-snapshot.ts][create-draw-snapshot] stores everyone's FitCoin total and ticket range, the prizes and the [drand](https://drand.love) round published at the draw time, and prints the snapshot's SHA-256 fingerprint and its link, `https://summer-bodies.web.app/draw/<random id>`. It can only be stored once, and only people with the link can see the entries.
+
+2. **Announce it in Slack**: the fingerprint, the draw time and the draw link. Slack's timestamp shows these were fixed before anyone could know the drand round's random number. Until the draw, the page shows a countdown and everyone's tickets.
+3. **The draw**: when the countdown reaches zero, everyone's draw page fetches the drand round, checks its signature and works out the winners (1st prize first) by itself. **Watch the reveal** then plays the animation ([lucky-draw.html][lucky-draw]) on the page, from 20th place up to 1st; **Show winners** lists them, with every draw step. Anyone can also re-run the draw with `node scripts/verify-draw.mjs <draw link>` (in `website/`).
+
+Locally, `/preview-draw` shows the page with made-up entries.
+
 ## Local Dev
 
 For local development, service account credentials can be created by following [getting started][getting-started] Google guide. Generate JSON service account credentials. Place the credentials in the project root directory and ensure it is named `service-account.json`.
@@ -110,6 +128,8 @@ For local development, service account credentials can be created by following [
 [remove-athlete]: functions/examples/remove-athlete.ts
 [publish-daily-updates]: functions/examples/publish-daily-updates.ts
 [publish-weekly-results]: functions/examples/publish-weekly-results.ts
+[create-draw-snapshot]: functions/examples/create-draw-snapshot.ts
+[lucky-draw]: website/public/lucky-draw.html
 [bot]: functions/src/bot.ts
 [website-readme]: website/README.md
 [create-strava-token]: functions/examples/create-strava-token.ts
