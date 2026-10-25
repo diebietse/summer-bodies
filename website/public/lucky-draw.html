@@ -203,7 +203,7 @@ label.loop { display: flex; align-items: center; gap: 6px; font-weight: 700; fon
     comp.threshold.value = -16; comp.knee.value = 8; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.18;
     comp.connect(master); master.connect(o.dest || ctx.destination);
     const bus = {};
-    for (const [name, g] of Object.entries({ sfx: VO ? 0.7 : 0.85, amb: 0.5, music: 0.45 })) { bus[name] = ctx.createGain(); bus[name].gain.value = g; bus[name].connect(comp); }
+    for (const [name, g] of Object.entries({ sfx: VO ? 0.7 : 0.85, amb: 0.5, music: 0.45, voice: 1 })) { bus[name] = ctx.createGain(); bus[name].gain.value = g; bus[name].connect(comp); }
 
     // generated room reverb: decaying stereo noise, darker toward the tail
     const verb = ctx.createConvolver();
@@ -300,6 +300,17 @@ label.loop { display: flex; align-items: center; gap: 6px; font-weight: 700; fon
       out(g, p);
       const off = rand('off' + time + (p.f || ''))() * 2;
       src.start(t, off); src.stop(t + dur + 0.02);
+    }
+
+    // clip(t, buffer, { gain, bus }): a recorded sound (an AudioBuffer, e.g. a voice-over line) at time t. One that
+    // started before playback did - e.g. after seeking - joins in progress.
+    function clip(time, buffer, p = {}) {
+      const t = at(time), now = ctx.currentTime + 0.005;
+      if (!buffer || t + buffer.duration < now) return;
+      const src = ctx.createBufferSource(); src.buffer = buffer;
+      const g = ctx.createGain(); g.gain.value = p.gain == null ? 1 : p.gain;
+      src.connect(g); g.connect(bus[p.bus || 'voice']);
+      if (t >= now) src.start(t); else src.start(now, now - t);
     }
 
     // ---- named sounds. play(name, t, opts): opts.gain scales the whole sound, opts.pan places it.
@@ -415,7 +426,7 @@ label.loop { display: flex; align-items: center; gap: 6px; font-weight: 700; fon
       }
     }
 
-    return { play, bed, music, tone, noise, withMinor, hz, vo: VO, sounds: Object.keys(S) };
+    return { play, bed, music, tone, noise, clip, withMinor, hz, vo: VO, sounds: Object.keys(S) };
   };
 
   // Live playback for a player: SOUND.live(scoreFn, fromT, { voiceover, master }) starts the score from explainer time
@@ -706,6 +717,25 @@ const APP_NAME = DRAW.app || 'Summer Bodies Challenge';
 const BRAND = APP_NAME.toUpperCase();
 const brandPx = (px) => Math.min(px, Math.floor((px * 24) / BRAND.length)); // longer names shrink to fit the pill
 document.title = `${APP_NAME} - Lucky Draw`;
+// The voice-over: one recorded line per cue, at its start time on the explainer's clock (script, timings and how
+// it's generated: docs/lucky-draw/voiceover.md in the repo). Loaded as the page opens; if it can't be, the reveal just plays without it.
+// "And... first..." is its own clip, drawn out from the end of the podium through the dive into the gold medal,
+// straight into the $210 hit.
+const VOICEOVER = [
+  [0.0, 'line1'], [2.82, 'line2'], [5.85, 'line3'], [9.0, 'line4'], [17.4, 'line5'],
+  [23.4, 'line6'], [28.07, 'line6b'], [30.8, 'line7'], [33.03, 'line8'], [34.0, 'line9'],
+].map(([t, name]) => ({ t, src: `voiceover/${name}.mp3`, buffer: null }));
+let voReady = false;
+const voLoaded = (async () => {
+  const decoder = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 1, 48000);
+  await Promise.all(VOICEOVER.map(async (cue) => {
+    const res = await fetch(cue.src);
+    if (!res.ok) throw new Error(`${cue.src}: HTTP ${res.status}`);
+    const data = await res.arrayBuffer();
+    cue.buffer = await new Promise((resolve, reject) => decoder.decodeAudioData(data, resolve, reject));
+  }));
+  voReady = true;
+})().catch((e) => console.warn('Voice-over not available, playing without it:', e));
 // Fits a name into maxW: one line, shrinking from px down to oneLineMin; else two lines split at the most balanced
 // space or hyphen, at up to twoLinePx (down to minPx); an ellipsis only if even that can't fit. Returns { lines, px }.
 function fitName(x, s, weight, px, oneLineMin, twoLinePx, minPx, maxW) {
@@ -1050,6 +1080,7 @@ function explainer(x, W, H_, t) {
 
 // ================= sound =================
 function scoreSound(k) {
+  if (voReady) VOICEOVER.forEach((cue) => k.clip(cue.t, cue.buffer));
   const D = DURATION, hz = k.hz;
   const pan = (px) => cl((px / 1280) * 2 - 1, -1, 1) * 0.6;
   const when = (t0, t1, ease, u) => { for (let i = 0; i <= 400; i++) { const tt = t0 + ((t1 - t0) * i) / 400; if (ease(i / 400) >= u - 1e-6) return tt; } return t1; };
@@ -1175,6 +1206,7 @@ function scoreSound(k) {
   const canvas = document.getElementById('cv'), ctx = canvas.getContext('2d');
   const playBtn = document.getElementById('play'), scrub = document.getElementById('scrub'), tlabel = document.getElementById('time');
   const soundBtn = document.getElementById('snd'), loopBox = document.getElementById('loop');
+  voLoaded.then(() => { if (voReady && playing) startAudio(); }); // the voice joins in if it loads mid-play
   // A real reveal (winners passed in by the /draw page) stops on 1st place instead of looping back to 20th.
   if (DRAW.names) loopBox.checked = false;
   scrub.max = String(DURATION);
@@ -1190,7 +1222,7 @@ function scoreSound(k) {
   function startAudio() {
     stopAudio();
     if (!soundOn || !playing) return;
-    try { stopSound = SOUND.live(scoreSound, cur, { voiceover: false }); } catch (e) { console.error('Sound failed to start:', e); }
+    try { stopSound = SOUND.live(scoreSound, cur, { voiceover: voReady }); } catch (e) { console.error('Sound failed to start:', e); }
   }
   function setPlaying(p) {
     playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; playBtn.setAttribute('aria-pressed', String(p));
