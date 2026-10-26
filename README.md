@@ -115,7 +115,7 @@ To keep or share a video of it, render the reveal with the real winners (needs f
 npm run ts ./examples/render-reveal.ts -- https://summer-bodies.web.app/draw/<id> ./excluded/lucky-draw-reveal.mp4
 ```
 
-Locally, `/preview-draw` shows the page with made-up entries.
+Locally, `/preview-draw` shows the page with made-up entries. How the reveal animation and its voice-over were made, and how to regenerate them: [docs/lucky-draw/](docs/lucky-draw/).
 
 ## Local Dev
 
