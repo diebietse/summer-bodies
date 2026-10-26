@@ -109,6 +109,12 @@ After the challenge, FitCoin becomes tickets in a lucky draw for 20 prizes (one 
 2. **Announce it in Slack**: the fingerprint, the draw time and the draw link. Slack's timestamp shows these were fixed before anyone could know the drand round's random number. Until the draw, the page shows a countdown and everyone's tickets.
 3. **The draw**: when the countdown reaches zero, everyone's draw page fetches the drand round, checks its signature and works out the winners (1st prize first) by itself. **Watch the reveal** then plays the animation ([lucky-draw.html][lucky-draw]) on the page, from 20th place up to 1st; **Show winners** lists them, with every draw step. Anyone can also re-run the draw with `node scripts/verify-draw.mjs <draw link>` (in `website/`).
 
+To keep or share a video of it, render the reveal with the real winners (needs ffmpeg; takes a minute or two):
+
+```console
+npm run ts ./examples/render-reveal.ts -- https://summer-bodies.web.app/draw/<id> ./excluded/lucky-draw-reveal.mp4
+```
+
 Locally, `/preview-draw` shows the page with made-up entries.
 
 ## Local Dev
