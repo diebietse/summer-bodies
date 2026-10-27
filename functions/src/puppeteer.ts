@@ -10,10 +10,24 @@ export class Puppeteer {
   // Screenshots each `[data-screenshot]` section of the page as its own image, in page order, with its
   // `data-screenshot-title` as the title. The first image also covers the page header above it (logo, date range),
   // so the set reads on its own. A page with no marked sections (e.g. an error page) yields one full-page image.
+  //
+  // In Cloud Functions, Chrome is occasionally slow to start or to load the page (a cold container), so a failed
+  // attempt is retried once with a fresh browser before the job gives up.
   static async screenshotSections(url: string): Promise<SectionScreenshot[]> {
+    try {
+      return await Puppeteer.screenshotOnce(url);
+    } catch (error) {
+      console.warn(`Screenshot attempt failed, retrying once: ${error instanceof Error ? error.message : error}`);
+      return await Puppeteer.screenshotOnce(url);
+    }
+  }
+
+  private static async screenshotOnce(url: string): Promise<SectionScreenshot[]> {
     // Launch browser with optimized settings for Cloud Functions
     const browser = await puppeteer.launch({
       headless: true,
+      // Puppeteer's 30 s default is sometimes not enough for Chrome to start in a cold function container.
+      timeout: 90000,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
@@ -45,10 +59,22 @@ export class Puppeteer {
         isLandscape: false,
       });
 
-      // Navigate to the URL and wait for network to be idle
-      await page.goto(url, {
-        waitUntil: "networkidle0",
-        timeout: 30000,
+      // Wait for what's actually needed - the results sections (or the page's error message) rendered, plus fonts and
+      // images - rather than for the network to go fully quiet, which one slow request can hold off past the timeout.
+      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForSelector("[data-screenshot], .alert-danger", { timeout: 60000 });
+      await page.evaluate(async () => {
+        await document.fonts.ready;
+        const pending = [...document.images].filter((img) => !img.complete);
+        await Promise.all(
+          pending.map(
+            (img) =>
+              new Promise((resolve) => {
+                img.addEventListener("load", resolve, { once: true });
+                img.addEventListener("error", resolve, { once: true });
+              }),
+          ),
+        );
       });
 
       const sections = await page.$$("[data-screenshot]");
