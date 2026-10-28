@@ -24,9 +24,12 @@ export class Bot {
   // Runs a scheduled job, reporting any uncaught failure (Puppeteer, Firestore, a bad Strava response, ...)
   // instead of just failing the invocation silently - see errorReporting.ts.
   private static async runScheduledJob(name: string, job: () => Promise<void>): Promise<void> {
+    const started = Date.now();
     try {
       await job();
+      console.log(`${name} finished in ${((Date.now() - started) / 1000).toFixed(1)} s`);
     } catch (error) {
+      console.log(`${name} failed after ${((Date.now() - started) / 1000).toFixed(1)} s`);
       await reportError(`${name} failed`, error);
     }
   }
@@ -221,8 +224,10 @@ export class Bot {
     startUnixTime: number,
     endUnixTime: number,
   ): Promise<GetAllAthletesActivitiesResult & { ignoredDuplicates: IgnoredDuplicate[] }> {
+    const started = Date.now();
     const athletes = await Firestore.getRegisteredAthletes();
     const results = await strava.getAllAthletesActivities(athletes, startUnixTime, endUnixTime);
+    console.log(`Fetched ${athletes.length} athletes' Strava activities in ${((Date.now() - started) / 1000).toFixed(1)} s`);
     // Strava rotates the refresh token on every use, so persist the new one for everyone who was fetched
     // successfully - even when others failed and the caller discards the result.
     await Firestore.updateAthletesRefreshToken(results.athletesWithActivities);

@@ -23,6 +23,9 @@ export class Puppeteer {
   }
 
   private static async screenshotOnce(url: string): Promise<SectionScreenshot[]> {
+    const started = Date.now();
+    const step = (what: string) => console.log(`Screenshot: ${what} after ${((Date.now() - started) / 1000).toFixed(1)} s`);
+
     // Launch browser with optimized settings for Cloud Functions
     const browser = await puppeteer.launch({
       headless: true,
@@ -35,7 +38,7 @@ export class Puppeteer {
         "--disable-accelerated-2d-canvas",
         "--no-first-run",
         "--no-zygote",
-        "--single-process",
+        // No "--single-process": in Cloud Functions it made the screenshots take over 40 s instead of about 15.
         "--disable-gpu",
         "--disable-webgl",
         // Sometimes getting "Error: Timed out after 30000 ms while waiting for the WS endpoint URL to appear in stdout!"
@@ -43,6 +46,8 @@ export class Puppeteer {
         "--remote-debugging-port=9222",
       ],
     });
+
+    step(`Chrome ${await browser.version()} launched`);
 
     try {
       const page = await browser.newPage();
@@ -62,7 +67,9 @@ export class Puppeteer {
       // Wait for what's actually needed - the results sections (or the page's error message) rendered, plus fonts and
       // images - rather than for the network to go fully quiet, which one slow request can hold off past the timeout.
       await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+      step("page loaded");
       await page.waitForSelector("[data-screenshot], .alert-danger", { timeout: 60000 });
+      step("results rendered");
       await page.evaluate(async () => {
         await document.fonts.ready;
         const pending = [...document.images].filter((img) => !img.complete);
@@ -76,6 +83,8 @@ export class Puppeteer {
           ),
         );
       });
+
+      step("fonts and images loaded");
 
       const sections = await page.$$("[data-screenshot]");
       if (sections.length === 0) {
@@ -96,6 +105,7 @@ export class Puppeteer {
         const bottom = box.y + box.height;
         const png = await page.screenshot({ type: "png", clip: { x: 0, y: top, width, height: bottom - top }, captureBeyondViewport: true });
         screenshots.push({ name, title, png });
+        step(`'${name}' captured`);
       }
       return screenshots;
     } finally {
