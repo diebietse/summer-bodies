@@ -87,14 +87,16 @@ export class Challenge {
         let fitcoinAwarded = contestantCount > maxFitcoin ? maxFitcoin : contestantCount;
         let previousContestant: Contestant | null = null;
         for (let contestant of grouping.contestants) {
-          // If there was a draw, give contestants the same number of points
-          const fitcoin: number = previousContestant?.total === contestant.total ? previousContestant.fitcoin! : fitcoinAwarded;
+          // If there was a draw, give contestants the same number of points - including a draw with the last
+          // place that earns FitCoin, so nobody tied with them is cut off.
+          const tied = previousContestant?.total === contestant.total;
+          if (!tied && fitcoinAwarded <= 0) break;
+          const fitcoin: number = tied ? previousContestant!.fitcoin! : fitcoinAwarded;
           const contestantResult = { name: contestant.name, total: contestant.total, fitcoin: fitcoin, activityTypes: contestant.activityTypes };
           contestantResults.push(contestantResult);
-          console.log(`${event.name}/${grouping.name}/${contestant.name} : ${fitcoinAwarded} fitcoin`);
+          console.log(`${event.name}/${grouping.name}/${contestant.name} : ${fitcoin} fitcoin`);
           count++;
           if (count % fitcoinModifier == 0) fitcoinAwarded--;
-          if (fitcoinAwarded <= 0) break;
           previousContestant = contestantResult;
         }
 

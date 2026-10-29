@@ -177,6 +177,28 @@ test("athletes whose distances round to the same total tie and share FitCoin", (
   assert.equal(first.fitcoin, second.fitcoin);
 });
 
+test("athletes tied with the last FitCoin place are all kept, not cut off", () => {
+  // 17 people: 5 tiers of 3, so 15 places earn FitCoin - but places 13 to 17 are tied on 1 attempt.
+  const attempts = [6, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1];
+  const athletes = attempts.map((count, i) =>
+    athlete(
+      String(i + 1),
+      Array.from({ length: count }, () => ({ type: "Walk", distance: 1700, start_date_local: "2026-10-05T06:00:00Z" })),
+    ),
+  );
+  const { topResults } = Challenge.calculateResults(athletes);
+
+  const contestants = topResults
+    .find((event) => event.name === ActivityType.MileChallenge)!
+    .groupings.find((grouping) => grouping.name === GroupingType.Attempts)!.contestants;
+
+  assert.equal(contestants.length, 17);
+  assert.deepEqual(
+    contestants.slice(12).map((c) => c.fitcoin),
+    [1, 1, 1, 1, 1],
+  );
+});
+
 test("mile paces that round to the same second tie and share FitCoin", () => {
   // 1.6km in 369.6s and 369.9s: 3:51.00 and 3:51.19 per km, both shown as 3:51.
   const athletes = [
