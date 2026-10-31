@@ -13,23 +13,23 @@ Achieve a weekly goal by logging at least 3 activities with a minimum of 30 minu
 
 ## Weekly Fitcoin
 
-Achieve a position on the leader boards at the end of each week and earn FitCoin. The Top 5 in each category will earn FitCoin.
+Achieve a position on the leader boards at the end of each week and earn FitCoin. The Top 5 in each category will earn FitCoin. Other has 10 tiers, continuing down to 2 FitCoin, and pays double as it has a single ranking against three for On Foot and On Wheels.
 
-| Activity Type | Category       | 1st Place | 2nd Place | 3rd Place | 4th Place | 5th Place |
-| ------------- | -------------- | --------- | --------- | --------- | --------- | --------- |
-|               | Distance       | 5 FitCoin | 4 FitCoin | 3 FitCoin | 2 FitCoin | 1 FitCoin |
-| On Wheels     | Duration       | 5 FitCoin | 4 FitCoin | 3 FitCoin | 2 FitCoin | 1 FitCoin |
-|               | Elevation      | 5 FitCoin | 5 FitCoin | 3 FitCoin | 2 FitCoin | 1 FitCoin |
-| ------------- | -------------- | --------- | --------- | --------- | --------- | --------- |
-|               | Distance       | 5 FitCoin | 4 FitCoin | 3 FitCoin | 2 FitCoin | 1 FitCoin |
-| On Foot       | Duration       | 5 FitCoin | 4 FitCoin | 3 FitCoin | 2 FitCoin | 1 FitCoin |
-|               | Elevation      | 5 FitCoin | 5 FitCoin | 3 FitCoin | 2 FitCoin | 1 FitCoin |
-| ------------- | -------------- | --------- | --------- | --------- | --------- | --------- |
-| Other         | Duration       | 5 FitCoin | 4 FitCoin | 3 FitCoin | 2 FitCoin | 1 FitCoin |
+| Activity Type | Category       | 1st Place  | 2nd Place  | 3rd Place  | 4th Place  | 5th Place  |
+| ------------- | -------------- | ---------- | ---------- | ---------- | ---------- | ---------- |
+|               | Distance       | 5 FitCoin  | 4 FitCoin  | 3 FitCoin  | 2 FitCoin  | 1 FitCoin  |
+| On Wheels     | Duration       | 5 FitCoin  | 4 FitCoin  | 3 FitCoin  | 2 FitCoin  | 1 FitCoin  |
+|               | Elevation      | 5 FitCoin  | 4 FitCoin  | 3 FitCoin  | 2 FitCoin  | 1 FitCoin  |
+| ------------- | -------------- | ---------  | ---------  | ---------  | ---------  | ---------  |
+|               | Distance       | 5 FitCoin  | 4 FitCoin  | 3 FitCoin  | 2 FitCoin  | 1 FitCoin  |
+| On Foot       | Duration       | 5 FitCoin  | 4 FitCoin  | 3 FitCoin  | 2 FitCoin  | 1 FitCoin  |
+|               | Elevation      | 5 FitCoin  | 4 FitCoin  | 3 FitCoin  | 2 FitCoin  | 1 FitCoin  |
+| ------------- | -------------- | ---------  | ---------  | ---------  | ---------  | ---------  |
+| Other         | Duration       | 20 FitCoin | 18 FitCoin | 16 FitCoin | 14 FitCoin | 12 FitCoin |
 
 ## Streak Challenge
 
-Log at least 1km of an On Foot activity (Run/Walk/Hike) every single day between `challengeStartDate` and `challengeEndDate`. Missing a day eliminates you for the rest of the challenge, once that week's Sunday 23:59 upload deadline has passed. Everyone still in earns 1 FitCoin for each day survived. Status is shown on the results page, not posted to Slack.
+Log at least 1km of an On Foot activity (Run/Walk/Hike) on consecutive days between `challengeStartDate` and `challengeEndDate`. A missed day (once that week's Sunday 23:59 upload deadline has passed) ends your current streak, but you can start a new one the next day - also if you join the challenge late. It's scored once, at the end of the challenge: 1 FitCoin for each day of your longest streak, posted with the final week's results (and counted on its own in the lucky draw). Progress is shown on the results page.
 
 ## Configuration
 
@@ -106,7 +106,7 @@ Run [reset-season.ts][reset-season] once the season is over, and before the next
 npm run ts ./examples/reset-season.ts
 ```
 
-FitCoin and results are kept as history.
+FitCoin and results are kept as history: a season's totals and lucky draw only count the weeks between its own `challengeStartDate` and `challengeEndDate`, plus awards with its start date in their name (the streak challenge's `streak-<challengeStartDate>`). Name any one-off FitCoin correction that way too, e.g. `tie-fix-2027-10-04`, or it won't count.
 
 ## Removing an Athlete
 
@@ -143,7 +143,7 @@ After the challenge, FitCoin becomes tickets in a lucky draw for 20 prizes (one 
    npm run ts ./examples/create-draw-snapshot.ts -- 2026-11-06T12:00:00+02:00
    ```
 
-   [create-draw-snapshot.ts][create-draw-snapshot] stores everyone's FitCoin total and ticket range, the prizes and the [drand](https://drand.love) round published at the draw time, and prints the snapshot's SHA-256 fingerprint and its link, `https://summer-bodies.web.app/draw/<random id>`. It can only be stored once, and only people with the link can see the entries.
+   [create-draw-snapshot.ts][create-draw-snapshot] stores everyone's FitCoin per week, tickets (each week's FitCoin squared, plus the streak challenge's squared, added up - so a big week counts for more than two small ones, and joining late only costs the weeks missed) and ticket range, the prizes and the [drand](https://drand.love) round published at the draw time, and prints the snapshot's SHA-256 fingerprint and its link, `https://summer-bodies.web.app/draw/<random id>`. It can only be stored once, and only people with the link can see the entries.
 
 2. **Announce it in Slack**: the fingerprint, the draw time and the draw link. Slack's timestamp shows these were fixed before anyone could know the drand round's random number. Until the draw, the page shows a countdown and everyone's tickets.
 3. **The draw**: when the countdown reaches zero, everyone's draw page fetches the drand round, checks its signature and works out the winners (1st prize first) by itself. **Watch the reveal** then plays the animation ([lucky-draw.html][lucky-draw]) on the page, from 20th place up to 1st; **Show winners** lists them, with every draw step. Anyone can also re-run the draw with `node scripts/verify-draw.mjs <draw link>` (in `website/`).

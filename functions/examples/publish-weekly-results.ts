@@ -6,7 +6,8 @@
 // Slack post, including error reports, goes to "#test-bot" (or the given channel); --live posts to the configured
 // channels instead.
 //
-// Whatever the channel, this writes the real results: last week's FitCoin, streak FitCoin and updated streaks, and it
+// Whatever the channel, this writes the real results: last week's FitCoin, the updated streaks (and in the challenge's
+// final week its streak FitCoin), and it
 // makes the webhook-fed activity store match last week's poll - adding what's missing and deleting what Strava no
 // longer has. Meant
 // for after a failed run: already-evaluated streak days are skipped and each contestant's FitCoin doc is overwritten,

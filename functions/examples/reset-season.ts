@@ -9,7 +9,8 @@
 // grant should end.
 //
 // Scoped to athletes, their current-season streaks, and their stored activities only - never touches fitcoin
-// or results, which are kept as history.
+// or results, which are kept as history (a season's totals and lucky draw only count the weeks inside its own
+// challengeStartDate..challengeEndDate - see draw.ts's isChallengeAward).
 //
 // The backup is a local file (excluded/, gitignored), not Firestore: it leaves out refresh tokens and stored
 // activities - the Strava data this exists to delete - so it only holds who was registered and their streaks.

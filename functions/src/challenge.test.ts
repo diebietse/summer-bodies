@@ -32,8 +32,8 @@ test("new athlete who logs a qualifying run on the checked day starts a streak",
   const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-05T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
-  assert.equal(result.alive, true);
   assert.equal(result.currentStreak, 1);
+  assert.equal(result.longestStreak, 1);
 });
 
 test("an activity counts toward the athlete's local day, not the UTC day", () => {
@@ -41,32 +41,32 @@ test("an activity counts toward the athlete's local day, not the UTC day", () =>
   const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date: "2026-10-05T22:30:00Z", start_date_local: "2026-10-06T00:30:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-06"]);
 
-  assert.equal(result.alive, true);
   assert.equal(result.currentStreak, 1);
+  assert.equal(result.longestStreak, 1);
 });
 
 test("an activity under 1km does not qualify", () => {
   const athletes = [athlete("1", [{ type: "Run", distance: 900, start_date_local: "2026-10-05T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
-  assert.equal(result.alive, false);
   assert.equal(result.currentStreak, 0);
+  assert.equal(result.longestStreak, 0);
 });
 
 test("an activity of exactly 1km qualifies", () => {
   const athletes = [athlete("1", [{ type: "Walk", distance: 1000, start_date_local: "2026-10-05T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
-  assert.equal(result.alive, true);
   assert.equal(result.currentStreak, 1);
+  assert.equal(result.longestStreak, 1);
 });
 
 test("a non on-foot activity does not qualify, even if it's far enough", () => {
   const athletes = [athlete("1", [{ type: "Ride", distance: 5000, start_date_local: "2026-10-05T06:00:00Z" }])];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
-  assert.equal(result.alive, false);
   assert.equal(result.currentStreak, 0);
+  assert.equal(result.longestStreak, 0);
 });
 
 test("only one qualifying activity on the day is enough", () => {
@@ -78,17 +78,17 @@ test("only one qualifying activity on the day is enough", () => {
   ];
   const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05"]);
 
-  assert.equal(result.alive, true);
   assert.equal(result.currentStreak, 1);
+  assert.equal(result.longestStreak, 1);
 });
 
 test("an activity only counts for its own calendar day", () => {
-  // Qualifying activity on the 6th, but the 5th - the first day being checked - has nothing.
+  // Qualifying activity on the 6th, but the 5th has nothing - so the streak only starts on the 6th.
   const athletes = [athlete("1", [{ type: "Run", distance: 2000, start_date_local: "2026-10-06T06:00:00Z" }])];
-  const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05", "2026-10-06"]);
+  const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-05", "2026-10-06", "2026-10-07"]);
 
-  assert.equal(result.alive, false);
   assert.equal(result.currentStreak, 0);
+  assert.equal(result.longestStreak, 1);
 });
 
 test("consecutive qualifying days extend an existing streak", () => {
@@ -98,30 +98,40 @@ test("consecutive qualifying days extend an existing streak", () => {
       { type: "Walk", distance: 1200, start_date_local: "2026-10-13T06:00:00Z" },
     ]),
   ];
-  const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", alive: true, currentStreak: 3 }]]);
+  const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", currentStreak: 3, longestStreak: 3 }]]);
   const [result] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12", "2026-10-13"]);
 
-  assert.equal(result.alive, true);
   assert.equal(result.currentStreak, 5);
+  assert.equal(result.longestStreak, 5);
 });
 
-test("a missed day eliminates the athlete and freezes their streak at the days completed so far in this check", () => {
+test("a missed day resets the current streak but keeps the longest one", () => {
   const athletes = [athlete("1", [{ type: "Run", distance: 1500, start_date_local: "2026-10-12T06:00:00Z" }])];
-  const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", alive: true, currentStreak: 6 }]]);
-  // The 12th qualifies (streak -> 7), the 13th has nothing recorded, so they're eliminated with the streak frozen at 7.
+  const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", currentStreak: 6, longestStreak: 6 }]]);
+  // The 12th qualifies (streak -> 7), the 13th has nothing recorded, so the current streak starts over.
   const [result] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12", "2026-10-13"]);
 
-  assert.equal(result.alive, false);
-  assert.equal(result.currentStreak, 7);
+  assert.equal(result.currentStreak, 0);
+  assert.equal(result.longestStreak, 7);
 });
 
-test("an already eliminated athlete stays eliminated, even if they log a qualifying activity", () => {
-  const athletes = [athlete("1", [{ type: "Run", distance: 5000, start_date_local: "2026-10-12T06:00:00Z" }])];
-  const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", alive: false, currentStreak: 6 }]]);
-  const [result] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12"]);
+test("after a missed day a new streak starts, and only becomes the longest once it's longer", () => {
+  const athletes = [
+    athlete("1", [
+      { type: "Run", distance: 5000, start_date_local: "2026-10-12T06:00:00Z" },
+      { type: "Run", distance: 5000, start_date_local: "2026-10-13T06:00:00Z" },
+      { type: "Run", distance: 5000, start_date_local: "2026-10-14T06:00:00Z" },
+    ]),
+  ];
+  const previousStreaks = new Map<string, StreakState>([["1", { athleteId: "1", name: "Test 1", currentStreak: 0, longestStreak: 2 }]]);
 
-  assert.equal(result.alive, false);
-  assert.equal(result.currentStreak, 6);
+  const [afterTwo] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12", "2026-10-13"]);
+  assert.equal(afterTwo.currentStreak, 2);
+  assert.equal(afterTwo.longestStreak, 2);
+
+  const [afterThree] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12", "2026-10-13", "2026-10-14"]);
+  assert.equal(afterThree.currentStreak, 3);
+  assert.equal(afterThree.longestStreak, 3);
 });
 
 test("Mile Challenge is omitted when nobody logged a mile-range run, like On Wheels is when nobody rode", () => {
@@ -199,6 +209,87 @@ test("athletes tied with the last FitCoin place are all kept, not cut off", () =
   );
 });
 
+test("Other pays double per tier, from 20 down to 2", () => {
+  const athletes = Array.from({ length: 10 }, (_, i) =>
+    athlete(String(i + 1), [{ type: "Yoga", moving_time: (60 - i) * 60, elapsed_time: (60 - i) * 60, start_date_local: "2026-10-05T06:00:00Z" }]),
+  );
+  const other = Challenge.calculateResults(athletes).topResults.find((event) => event.name === ActivityType.Other)!;
+
+  assert.deepEqual(
+    other.groupings[0].contestants.map((c) => c.fitcoin),
+    [20, 18, 16, 14, 12, 10, 8, 6, 4, 2],
+  );
+});
+
+function otherAthletes(minutes: number[]): AthleteWithActivities[] {
+  return minutes.map((m, i) =>
+    athlete(String(i + 1), [{ type: "Yoga", moving_time: m * 60, elapsed_time: m * 60, start_date_local: "2026-10-05T06:00:00Z" }]),
+  );
+}
+
+function otherFitcoin(athletes: AthleteWithActivities[]): number[] {
+  return Challenge.calculateResults(athletes)
+    .topResults.find((event) => event.name === ActivityType.Other)!
+    .groupings[0].contestants.map((c) => c.fitcoin);
+}
+
+test("tied Other entrants share the doubled FitCoin", () => {
+  assert.deepEqual(otherFitcoin(otherAthletes([60, 50, 50, 40])), [8, 6, 6, 2]);
+});
+
+test("with more than 10 Other entrants several share each doubled tier", () => {
+  const fitcoin = otherFitcoin(otherAthletes(Array.from({ length: 25 }, (_, i) => 100 - i)));
+
+  assert.deepEqual(fitcoin, [20, 20, 18, 18, 16, 16, 14, 14, 12, 12, 10, 10, 8, 8, 6, 6, 4, 4, 2, 2]);
+});
+
+test("someone tied with the last paid Other place gets the same doubled FitCoin", () => {
+  const fitcoin = otherFitcoin(otherAthletes([60, 59, 58, 57, 56, 55, 54, 53, 52, 51, 51]));
+
+  assert.deepEqual(fitcoin.slice(-2), [2, 2]);
+});
+
+function streak(name: string, currentStreak: number, longestStreak: number): StreakState {
+  return { athleteId: name, name, currentStreak, longestStreak };
+}
+
+test("calculateStreakFitcoin pays each longest streak, but only in the week containing the challenge's last day", () => {
+  const streaks = [streak("Alex", 0, 12), streak("Blake", 28, 28), streak("Casey", 0, 0)];
+  const finalWeek = ["2026-10-26", "2026-10-27", "2026-10-28", "2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01"];
+
+  assert.deepEqual(Challenge.calculateStreakFitcoin(streaks, finalWeek, "2026-11-01"), [
+    { name: "Blake", fitcoin: 28 },
+    { name: "Alex", fitcoin: 12 },
+  ]);
+  assert.deepEqual(Challenge.calculateStreakFitcoin(streaks, ["2026-10-19", "2026-10-25"], "2026-11-01"), []);
+});
+
+test("withStreakDefaults fills in what docs from older code lack", () => {
+  const old = { athleteId: "1", name: "Alex", currentStreak: 9 } as StreakState;
+
+  assert.deepEqual(Challenge.withStreakDefaults(old, "2026-10-18"), { ...old, longestStreak: 9, lastEvaluatedDate: "2026-10-18" });
+});
+
+test("withStreakDefaults ends the current streak of an athlete older code eliminated, keeping it as their longest", () => {
+  const eliminated = { athleteId: "1", name: "Alex", currentStreak: 15, alive: false, lastEvaluatedDate: "2026-10-25" } as StreakState & {
+    alive: boolean;
+  };
+
+  assert.deepEqual(Challenge.withStreakDefaults(eliminated, "2026-10-25"), {
+    athleteId: "1",
+    name: "Alex",
+    currentStreak: 0,
+    longestStreak: 15,
+    lastEvaluatedDate: "2026-10-25",
+  });
+});
+
+test("withStreakDefaults leaves a current doc unchanged", () => {
+  const current = { athleteId: "1", name: "Alex", currentStreak: 3, longestStreak: 10, lastEvaluatedDate: "2026-10-25" };
+
+  assert.deepEqual(Challenge.withStreakDefaults(current, "2026-11-01"), current);
+});
+
 test("mile paces that round to the same second tie and share FitCoin", () => {
   // 1.6km in 369.6s and 369.9s: 3:51.00 and 3:51.19 per km, both shown as 3:51.
   const athletes = [
@@ -274,60 +365,32 @@ test("evaluating the same dates again does not count them twice", () => {
 
   assert.equal(first[0].currentStreak, 2);
   assert.equal(again[0].currentStreak, 2);
-  assert.equal(again[0].alive, true);
+  assert.equal(again[0].longestStreak, 2);
 });
 
-test("an athlete registering after the first week can't start a streak, even with a qualifying run", () => {
+test("an athlete registering after the first week can still start a streak", () => {
   const athletes = [
     athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-12T06:00:00Z" }]),
     athlete("2", [{ type: "Run", distance: 1200, start_date_local: "2026-10-12T06:00:00Z" }]),
   ];
   const previousStreaks = new Map<string, StreakState>([
-    ["1", { athleteId: "1", name: "Test 1", alive: true, currentStreak: 7, lastEvaluatedDate: "2026-10-11" }],
+    ["1", { athleteId: "1", name: "Test 1", currentStreak: 7, longestStreak: 7, lastEvaluatedDate: "2026-10-11" }],
   ]);
   const [, late] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-12"]);
 
-  assert.equal(late.alive, false);
-  assert.equal(late.currentStreak, 0);
-});
-
-test("if no week has been stored yet, every athlete can still start a streak", () => {
-  // e.g. the first week's job failed - nobody is treated as a late starter.
-  const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-12T06:00:00Z" }])];
-  const [result] = Challenge.calculateStreakUpdates(athletes, new Map(), ["2026-10-12"]);
-
-  assert.equal(result.alive, true);
-  assert.equal(result.currentStreak, 1);
+  assert.equal(late.currentStreak, 1);
+  assert.equal(late.longestStreak, 1);
 });
 
 test("only dates after the last evaluated one are counted", () => {
   const athletes = [athlete("1", [{ type: "Run", distance: 1200, start_date_local: "2026-10-07T06:00:00Z" }])];
   const previousStreaks = new Map<string, StreakState>([
-    ["1", { athleteId: "1", name: "Test 1", alive: true, currentStreak: 2, lastEvaluatedDate: "2026-10-06" }],
+    ["1", { athleteId: "1", name: "Test 1", currentStreak: 2, longestStreak: 2, lastEvaluatedDate: "2026-10-06" }],
   ]);
   const [result] = Challenge.calculateStreakUpdates(athletes, previousStreaks, ["2026-10-06", "2026-10-07"]);
 
   assert.equal(result.currentStreak, 3);
   assert.equal(result.lastEvaluatedDate, "2026-10-07");
-});
-
-test("combineFitcoin sums per contestant and sorts highest first", () => {
-  const combined = Challenge.combineFitcoin(
-    [
-      { name: "A", fitcoin: 10 },
-      { name: "B", fitcoin: 30 },
-    ],
-    [
-      { name: "A", fitcoin: 7 },
-      { name: "C", fitcoin: 7 },
-    ],
-  );
-
-  assert.deepEqual(combined, [
-    { name: "B", fitcoin: 30 },
-    { name: "A", fitcoin: 17 },
-    { name: "C", fitcoin: 7 },
-  ]);
 });
 
 test("of two overlapping activities only the shortest is kept", () => {

@@ -2,9 +2,9 @@
 // Not used anywhere in the real app - only Preview.vue imports this, and Preview.vue only exists in dev builds.
 // Shaped exactly like the ChallengeResults JSON functions/src/bot.ts stores and /results/:id serves.
 export const mockResults = {
-  startDate: 1791151200, // 2026-10-05 00:00 SAST (Monday)
-  endDate: 1791756000, // 2026-10-12 00:00 SAST (next Monday)
-  currentTime: 1791450900, // 2026-10-08 11:15 SAST (Thursday - mid-week, so the "in progress" scenario reads correctly)
+  startDate: 1822600800, // 2027-10-04 00:00 SAST (Monday)
+  endDate: 1823205600, // 2027-10-11 00:00 SAST (next Monday)
+  currentTime: 1822900500, // 2027-10-07 11:15 SAST (Thursday - mid-week, so the "in progress" scenario reads correctly)
   topResults: [
     {
       name: "On Foot",
@@ -83,9 +83,9 @@ export const mockResults = {
           name: "Duration",
           unit: "min",
           contestants: [
-            { name: "Jamie Lee", total: 180, fitcoin: 10, activityTypes: ["Golf", "Yoga"] },
-            { name: "Taylor Brooks", total: 150, fitcoin: 9, activityTypes: ["Crossfit"] },
-            { name: "Alex Carter", total: 120, fitcoin: 8, activityTypes: ["HighIntensityIntervalTraining", "TableTennis"] },
+            { name: "Jamie Lee", total: 180, fitcoin: 20, activityTypes: ["Golf", "Yoga"] },
+            { name: "Taylor Brooks", total: 150, fitcoin: 18, activityTypes: ["Crossfit"] },
+            { name: "Alex Carter", total: 120, fitcoin: 16, activityTypes: ["HighIntensityIntervalTraining", "TableTennis"] },
           ],
         },
       ],
@@ -124,13 +124,13 @@ export const mockResults = {
     { name: "Casey Nguyen", achieved: false, activities: 2, totalTimeMin: 95, goal: 3, fitcoin: 0 },
   ],
   streaks: [
-    { athleteId: "1", name: "Alex Carter", alive: true, currentStreak: 12 },
-    { athleteId: "2", name: "Jamie Lee", alive: true, currentStreak: 12 },
-    { athleteId: "7", name: "Riley Cohen", alive: false, currentStreak: 11 },
-    { athleteId: "3", name: "Morgan Reyes", alive: true, currentStreak: 12 },
-    { athleteId: "4", name: "Casey Nguyen", alive: false, currentStreak: 8 },
-    { athleteId: "5", name: "Taylor Brooks", alive: true, currentStreak: 12 },
-    { athleteId: "6", name: "Jordan Blake", alive: false, currentStreak: 0 },
+    { athleteId: "1", name: "Alex Carter", currentStreak: 12, longestStreak: 12 },
+    { athleteId: "2", name: "Jamie Lee", currentStreak: 12, longestStreak: 12 },
+    { athleteId: "7", name: "Riley Cohen", currentStreak: 0, longestStreak: 11 },
+    { athleteId: "3", name: "Morgan Reyes", currentStreak: 3, longestStreak: 8 },
+    { athleteId: "4", name: "Casey Nguyen", currentStreak: 5, longestStreak: 5 },
+    { athleteId: "5", name: "Taylor Brooks", currentStreak: 12, longestStreak: 12 },
+    { athleteId: "6", name: "Jordan Blake", currentStreak: 0, longestStreak: 0 },
   ],
   athletes: [{ name: "Alex Carter" }, { name: "Casey Nguyen" }, { name: "Jamie Lee" }, { name: "Jordan Blake" }, { name: "Morgan Reyes" }, { name: "Riley Cohen" }, { name: "Taylor Brooks" }],
 };

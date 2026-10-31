@@ -29,7 +29,7 @@ export class Challenge {
   //
   // Only activities in the same group (On Foot / On Wheels / Other) can be duplicates: a short Workout logged
   // during a long walk is a separate recording, and dropping the walk for it could cost the athlete their
-  // streak day - an elimination that can never be undone.
+  // streak day.
   static removeDuplicateActivities(athletes: AthleteWithActivities[]): { athletes: AthleteWithActivities[]; ignored: IgnoredDuplicate[] } {
     const ignored: IgnoredDuplicate[] = [];
     const describe = (activity: Activity) =>
@@ -75,6 +75,10 @@ export class Challenge {
 
     challengeEvents.forEach((event) => {
       const maxFitcoin = event.name == ActivityType.Other ? 10 : 5;
+      // Other (every sport without its own category) has only one ranking, against three for On Foot, three for On
+      // Wheels and the Mile Challenge's two, so each of its tiers pays double - or someone who mainly does Other could
+      // earn far less in a week than a runner, however hard they train.
+      const fitcoinPerTier = event.name == ActivityType.Other ? 2 : 1;
 
       const groupingResults: Grouping[] = [];
 
@@ -91,7 +95,7 @@ export class Challenge {
           // place that earns FitCoin, so nobody tied with them is cut off.
           const tied = previousContestant?.total === contestant.total;
           if (!tied && fitcoinAwarded <= 0) break;
-          const fitcoin: number = tied ? previousContestant!.fitcoin! : fitcoinAwarded;
+          const fitcoin: number = tied ? previousContestant!.fitcoin! : fitcoinAwarded * fitcoinPerTier;
           const contestantResult = { name: contestant.name, total: contestant.total, fitcoin: fitcoin, activityTypes: contestant.activityTypes };
           contestantResults.push(contestantResult);
           console.log(`${event.name}/${grouping.name}/${contestant.name} : ${fitcoin} fitcoin`);
@@ -138,17 +142,40 @@ export class Challenge {
     return weekResults.sort(this.compareWeeklyResult);
   }
 
+  // The streak challenge's FitCoin, scored once, when the week containing `challengeEndDate` is finalized: 1 FitCoin
+  // per day of each athlete's longest streak. Squared on its own in the lucky draw, a streak covering N weeks already
+  // weighs N times as much as the same FitCoin paid a week at a time (4 times for the whole challenge), so 1 a day is
+  // enough to make every-day activity count. Empty in every other week.
+  static calculateStreakFitcoin(streaks: StreakState[], weekDates: string[], challengeEndDate: string): ContestantFitcoin[] {
+    if (!weekDates.includes(challengeEndDate)) return [];
+    return streaks
+      .map((streak) => ({ name: streak.name, fitcoin: streak.longestStreak }))
+      .filter((contestant) => contestant.fitcoin > 0)
+      .sort(compareContestantFitcoin);
+  }
+
+  // Fills in what a stored streak doc saved by older code lacks, given when it was last written:
+  // * lastEvaluatedDate: docs saved before it existed were only ever written by the Monday weekly job, for the week
+  //   that had just ended - so derive it from the write time, or re-running that week would count it twice.
+  // * longestStreak: docs saved before it existed (when a missed day ended your streak for good) had no longer run
+  //   than their currentStreak. An eliminated one (`alive: false`) kept the streak it was knocked out on, which is
+  //   its longest but no longer current - carrying it on would treat the missed day as never having happened.
+  static withStreakDefaults(stored: StreakState & { alive?: boolean }, lastDayOfWeekWritten: string): StreakState {
+    const { alive, ...streak } = stored;
+    return {
+      ...streak,
+      lastEvaluatedDate: streak.lastEvaluatedDate ?? lastDayOfWeekWritten,
+      longestStreak: streak.longestStreak ?? streak.currentStreak,
+      currentStreak: alive === false ? 0 : streak.currentStreak,
+    };
+  }
+
   // Advances each athlete's 1km-a-day streak across `challengeDates` (ascending "YYYY-MM-DD" dates, evaluated in
-  // order against each activity's calendar day in the athlete's own timezone). Once a date has no qualifying
-  // activity, the athlete is frozen as eliminated (`alive: false`) with whatever streak they'd built up, and
-  // stays that way on every later call regardless of what they log afterwards.
+  // order against each activity's calendar day in the athlete's own timezone). A day with a qualifying activity
+  // extends the current streak, a day without one resets it to 0, and `longestStreak` keeps the best run so far.
+  // Nobody is ever eliminated, so a streak can start on any day of the challenge - also by someone who joins late.
   //
   // Dates up to the athlete's `lastEvaluatedDate` are skipped, so passing the same dates again is a no-op.
-  //
-  // A streak can only be started from the challenge's first day: an athlete with no stored streak while others
-  // already have one registered after the first week was evaluated, so they're stored as eliminated with no days
-  // (still free to take part in everything else). Keyed on other athletes' records rather than on the dates, so
-  // if the first week's job failed for everyone, everyone still starts together.
   //
   // `challengeDates` is deliberately the caller's responsibility: activities can be uploaded to Strava late (up to
   // Sunday 23:59 for that week, per the challenge rules), so callers should only pass dates whose upload window has
@@ -160,10 +187,7 @@ export class Challenge {
   ): StreakState[] {
     return athletes.map((athlete) => {
       const name = `${athlete.firstname} ${athlete.lastname}`;
-      const lateStarter = previousStreaks.size > 0 && !previousStreaks.has(athlete.id);
-      const previous = previousStreaks.get(athlete.id) ?? { athleteId: athlete.id, name, alive: !lateStarter, currentStreak: 0 };
-
-      if (!previous.alive) return { ...previous, name };
+      const previous = previousStreaks.get(athlete.id) ?? { athleteId: athlete.id, name, currentStreak: 0, longestStreak: 0 };
 
       const qualifyingDates = new Set(
         athlete.activities
@@ -174,27 +198,14 @@ export class Challenge {
       const pendingDates = challengeDates.filter((date) => !previous.lastEvaluatedDate || date > previous.lastEvaluatedDate);
       if (pendingDates.length === 0) return { ...previous, name };
 
-      let alive = true;
-      let currentStreak = previous.currentStreak;
+      let { currentStreak, longestStreak } = previous;
       for (const date of pendingDates) {
-        if (!qualifyingDates.has(date)) {
-          alive = false;
-          break;
-        }
-        currentStreak++;
+        currentStreak = qualifyingDates.has(date) ? currentStreak + 1 : 0;
+        longestStreak = Math.max(longestStreak, currentStreak);
       }
 
-      return { athleteId: athlete.id, name, alive, currentStreak, lastEvaluatedDate: pendingDates[pendingDates.length - 1] };
+      return { athleteId: athlete.id, name, currentStreak, longestStreak, lastEvaluatedDate: pendingDates[pendingDates.length - 1] };
     });
-  }
-
-  // Sums each contestant's FitCoin across several lists (e.g. the weekly results and the streak award).
-  static combineFitcoin(...lists: ContestantFitcoin[][]): ContestantFitcoin[] {
-    const totals = new Map<string, number>();
-    for (const contestant of lists.flat()) {
-      totals.set(contestant.name, (totals.get(contestant.name) ?? 0) + contestant.fitcoin);
-    }
-    return [...totals].map(([name, fitcoin]) => ({ name, fitcoin })).sort(compareContestantFitcoin);
   }
 
   static calculateFitcoin(results: ChallengeResults): ContestantFitcoin[] {

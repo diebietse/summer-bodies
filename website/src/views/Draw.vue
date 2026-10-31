@@ -9,7 +9,9 @@
     <div v-else-if="error" class="alert alert-warning my-5">{{ error }}</div>
 
     <template v-else>
-      <p class="lead">{{ snapshot.prizes.length }} prizes worth ${{ prizeTotal }}, drawn from {{ snapshot.entries.length }} entries - one ticket per FitCoin.</p>
+      <p class="lead">
+        {{ snapshot.prizes.length }} prizes worth ${{ prizeTotal }}, drawn from {{ snapshot.entries.length }} entries - {{ weeklyTickets ? "each week's FitCoin (and the streak challenge's) squared in tickets, so a big week counts for more than two small ones" : "one ticket per FitCoin" }}.
+      </p>
 
       <!-- The draw -->
       <div class="mb-4">
@@ -65,7 +67,8 @@
             <tr>
               <th scope="col">Name</th>
               <th scope="col">FitCoin</th>
-              <th scope="col">Tickets</th>
+              <th v-if="weeklyTickets" scope="col">Tickets (FitCoin squared per week, then streak)</th>
+              <th scope="col">Ticket numbers</th>
               <th scope="col">Chance of drawing first</th>
             </tr>
           </thead>
@@ -73,8 +76,9 @@
             <tr v-for="entry in snapshot.entries" :key="entry.name">
               <td>{{ entry.name }}</td>
               <td>{{ entry.fitcoin }}</td>
+              <td v-if="weeklyTickets">{{ formatWeeklyTickets(entry) }}</td>
               <td>{{ entry.firstTicket }}-{{ entry.lastTicket }}</td>
-              <td>{{ ((entry.fitcoin / snapshot.totalTickets) * 100).toFixed(1) }}%</td>
+              <td>{{ ((ticketCount(entry) / snapshot.totalTickets) * 100).toFixed(1) }}%</td>
             </tr>
           </tbody>
         </table>
@@ -171,6 +175,10 @@ export default {
     };
   },
   computed: {
+    // Snapshots from 2027 on (version 2) give each week's FitCoin squared in tickets; 2026's gave one per FitCoin.
+    weeklyTickets() {
+      return this.snapshot.version >= 2;
+    },
     prizeTotal() {
       return this.snapshot.prizes.reduce((sum, prize) => sum + prize.amountUsd, 0);
     },
@@ -210,6 +218,14 @@ export default {
     clearInterval(this.timer);
   },
   methods: {
+    ticketCount(entry) {
+      return entry.lastTicket - entry.firstTicket + 1;
+    },
+    // e.g. "6² + 4² + 12² = 196": each week in order, then the streak challenge.
+    formatWeeklyTickets(entry) {
+      const weeks = Object.values(entry.weeklyFitcoin).map((fitcoin) => `${fitcoin}²`);
+      return `${weeks.join(" + ")} = ${entry.tickets.toLocaleString()}`;
+    },
     // Draws by itself once the round time has passed - everyone watching the countdown gets their winners at once.
     tick() {
       this.now = Date.now();

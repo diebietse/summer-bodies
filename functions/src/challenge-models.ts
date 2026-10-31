@@ -86,8 +86,10 @@ export const STREAK_MIN_DISTANCE_M = 1000;
 export interface StreakState {
   athleteId: string;
   name: string;
-  alive: boolean;
+  // Consecutive qualifying days ending on lastEvaluatedDate - 0 if that day was missed.
   currentStreak: number;
+  // The longest run of consecutive qualifying days so far this challenge, which is what streak FitCoin pays for.
+  longestStreak: number;
   // The last challenge date ("YYYY-MM-DD") already counted into currentStreak, so re-evaluating the same dates
   // (e.g. a re-run of the weekly job) can't count them twice.
   lastEvaluatedDate?: string;

@@ -50,10 +50,29 @@
       <div v-if="hasStreaks && (activeTab === 'streak' || screenshot)" class="tab-content" data-screenshot="streak" data-screenshot-title="Streak Challenge">
         <div class="streak-results">
           <h2 class="section-title">1km-a-day Streak Challenge</h2>
-          <p v-if="isResultsInProgress" class="text-muted text-center mb-4">On track so far this week - not final. Missing a day doesn't eliminate you until this week's Sunday 23:59 upload deadline has passed.</p>
+          <p v-if="isResultsInProgress && longestStreakFormat" class="text-muted text-center mb-4">So far this week - not final. A day without an activity yet still counts if it's uploaded by this week's Sunday 23:59 deadline.</p>
+          <p v-else-if="isResultsInProgress" class="text-muted text-center mb-4">On track so far this week - not final. Missing a day doesn't eliminate you until this week's Sunday 23:59 upload deadline has passed.</p>
           <p v-else class="text-muted text-center mb-4">This week's result - final.</p>
 
-          <div class="row mb-4 justify-content-center">
+          <div v-if="longestStreakFormat" class="row mb-4 justify-content-center">
+            <div class="col-md-3 col-sm-6 mb-3">
+              <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                  <h3 class="card-title">{{ onStreakCount }}</h3>
+                  <p class="card-text">On a Streak Now</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-3">
+              <div class="card text-center bg-secondary text-white">
+                <div class="card-body">
+                  <h3 class="card-title">{{ sortedStreaks[0]?.longestStreak ?? 0 }}</h3>
+                  <p class="card-text">Longest Streak (days)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div v-else class="row mb-4 justify-content-center">
             <div class="col-md-3 col-sm-6 mb-3">
               <div class="card text-center bg-success text-white">
                 <div class="card-body">
@@ -80,20 +99,23 @@
                     <tr>
                       <th scope="col">#</th>
                       <th scope="col">Name</th>
-                      <th scope="col">Days Survived</th>
-                      <th scope="col">Status</th>
+                      <th v-if="longestStreakFormat" scope="col">Longest Streak</th>
+                      <th v-if="longestStreakFormat" scope="col">Current Streak</th>
+                      <th v-if="!longestStreakFormat" scope="col">Days Survived</th>
+                      <th v-if="!longestStreakFormat" scope="col">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="streak in displayedStreaks" :key="streak.athleteId" :class="streak.alive ? 'table-success' : 'table-light'">
+                    <tr v-for="streak in displayedStreaks" :key="streak.athleteId" :class="streakRowClass(streak)">
                       <td>
                         <span class="position-badge" :class="getPositionClass(streakRank(streak))">
                           {{ streakRank(streak) }}
                         </span>
                       </td>
                       <td class="fw-bold">{{ streak.name }}</td>
+                      <td v-if="longestStreakFormat">{{ streak.longestStreak }}</td>
                       <td>{{ streak.currentStreak }}</td>
-                      <td>
+                      <td v-if="!longestStreakFormat">
                         <span class="badge" :class="streak.alive ? 'bg-success' : 'bg-secondary'">
                           {{ streak.alive ? "Still In" : "Eliminated" }}
                         </span>
@@ -105,8 +127,10 @@
             </div>
           </div>
 
-          <p v-if="hiddenStreakCount > 0" class="text-muted mt-3 small text-center">{{ hiddenStreakCount }} earlier {{ hiddenStreakCount === 1 ? "elimination" : "eliminations" }} not shown.</p>
-          <p class="text-muted mt-3 small text-center">Miss a day of at least 1km on foot and you're out - eliminations are only final once the week's Sunday 23:59 upload deadline has passed.</p>
+          <p v-if="hiddenStreakCount > 0 && longestStreakFormat" class="text-muted mt-3 small text-center">{{ hiddenStreakCount }} more not shown.</p>
+          <p v-else-if="hiddenStreakCount > 0" class="text-muted mt-3 small text-center">{{ hiddenStreakCount }} earlier {{ hiddenStreakCount === 1 ? "elimination" : "eliminations" }} not shown.</p>
+          <p v-if="longestStreakFormat" class="text-muted mt-3 small text-center">Log at least 1km on foot every day. Missing a day ends your current streak, but you can start a new one any day. At the end of the challenge you earn 1 FitCoin for each day of your longest streak.</p>
+          <p v-else class="text-muted mt-3 small text-center">Miss a day of at least 1km on foot and you're out - eliminations are only final once the week's Sunday 23:59 upload deadline has passed.</p>
         </div>
       </div>
 
@@ -225,7 +249,7 @@
             </div>
           </div>
 
-          <p class="text-muted small text-center">The top of each table earns FitCoin, from 5 down to 1 (10 down to 1 for Other) - with lots of entrants several people share each level, and ties earn the same.</p>
+          <p class="text-muted small text-center">The top of each table earns FitCoin, from 5 down to 1 ({{ otherPaysDouble ? "20 down to 2 for Other, which has only one table" : "10 down to 1 for Other" }}) - with lots of entrants several people share each level, and ties earn the same.</p>
           <p class="text-muted small text-center">Activities count for the week they start in (Monday to Sunday, South African time) and need to be on Strava by Sunday 23:59. The same activity recorded twice (e.g. on a watch and a phone) only counts once - the shorter recording is kept.</p>
         </div>
       </div>
@@ -355,18 +379,38 @@ export default {
     hasStreaks() {
       return !!this.results && Array.isArray(this.results.streaks) && this.results.streaks.length > 0;
     },
+    // Streaks from 2027 on pay for the longest streak, which can start any day; older results stored whether a
+    // missed day had eliminated the athlete (`alive`) instead.
+    // Other has paid double per tier since the 2027 season - stored results from before keep the rule they were
+    // scored with. By date rather than by the streak format, as results outside the streak challenge have no streaks.
+    otherPaysDouble() {
+      return this.results.startDate >= Date.parse("2027-01-01T00:00:00+02:00") / 1000;
+    },
+    longestStreakFormat() {
+      return this.hasStreaks && this.results.streaks[0].longestStreak !== undefined;
+    },
+    streakKey() {
+      return this.longestStreakFormat ? "longestStreak" : "currentStreak";
+    },
     sortedStreaks() {
       if (!this.hasStreaks) return [];
-      // Athletes eliminated on their very first evaluated day never accumulated any streak days - showing them
-      // as "Eliminated" with 0 days survived reads as a real elimination rather than simply not having started.
-      return [...this.results.streaks].filter((s) => s.currentStreak > 0).sort((a, b) => b.currentStreak - a.currentStreak);
+      const key = this.streakKey;
+      // Athletes who never logged a streak day haven't taken part in it - leave them out rather than listing them
+      // with 0 days. Ties on the longest streak list whoever is still going first.
+      return [...this.results.streaks].filter((s) => s[key] > 0).sort((a, b) => b[key] - a[key] || b.currentStreak - a.currentStreak);
     },
-    // The Slack screenshot leaves out athletes eliminated more than 2 days ago - i.e. whose days survived trail
-    // the longest streak by more than 2 - so it stays about who's still in it (and who only just went out).
+    // The Slack screenshot stays short: from 2027 on, the top 15 (and anyone tied with 15th) - before that,
+    // leaving out athletes eliminated more than 2 days ago, so it stays about who's still in it.
     displayedStreaks() {
       if (!this.screenshot || this.sortedStreaks.length === 0) return this.sortedStreaks;
+      if (this.longestStreakFormat) {
+        return this.sortedStreaks.filter((s) => this.streakRank(s) <= 15);
+      }
       const longest = this.sortedStreaks[0].currentStreak;
       return this.sortedStreaks.filter((s) => s.alive || s.currentStreak >= longest - 2);
+    },
+    onStreakCount() {
+      return this.sortedStreaks.filter((s) => s.currentStreak > 0).length;
     },
     hiddenStreakCount() {
       return this.sortedStreaks.length - this.displayedStreaks.length;
@@ -434,9 +478,13 @@ export default {
       while (first > 0 && list[first - 1][key] === list[index][key]) first--;
       return first + 1;
     },
-    // Ranked within every streak, not just the displayed ones, so hiding older eliminations doesn't shift positions.
+    // Ranked within every streak, not just the displayed ones, so hiding some in the screenshot doesn't shift positions.
     streakRank(streak) {
-      return this.rankAt(this.sortedStreaks, this.sortedStreaks.indexOf(streak), "currentStreak");
+      return this.rankAt(this.sortedStreaks, this.sortedStreaks.indexOf(streak), this.streakKey);
+    },
+    streakRowClass(streak) {
+      const going = this.longestStreakFormat ? streak.currentStreak > 0 : streak.alive;
+      return going ? "table-success" : "table-light";
     },
     getRowClass(rank) {
       if (rank === 1) return "table-warning"; // Gold

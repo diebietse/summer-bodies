@@ -132,7 +132,8 @@ export class Bot {
       results.startDate = previousWeek;
       results.endDate = currentWeek;
       results.currentTime = timeNow;
-      results.streaks = await this.finalizeStreaks(config, allActivities.athletesWithActivities, previousWeek, currentWeek);
+      const { streaks, streakFitcoin } = await this.finalizeStreaks(config, allActivities.athletesWithActivities, previousWeek, currentWeek);
+      results.streaks = streaks;
       results.athletes = this.mapRegisteredAthletes(allActivities.athletesWithActivities);
       await Firestore.storeResults(id, JSON.stringify(results));
 
@@ -141,7 +142,8 @@ export class Bot {
 
       await this.publishFinal(slack, resultsUrl, images);
       await this.publishWeeklyFitcoin(slack, results);
-      await this.publishTotalFitcoin(slack);
+      if (streakFitcoin.length > 0) await slack.post(Format.fitcoinStatus("Streak Challenge Fitcoin (longest streak)", streakFitcoin));
+      await this.publishTotalFitcoin(slack, config);
     });
   }
 
@@ -169,10 +171,9 @@ export class Bot {
   }
 
   // Only called once a week, once every day in that week has had its full Sunday-23:59 upload window close - see
-  // Challenge.calculateStreakUpdates for why elimination can't be decided any earlier than that. Persists the
-  // updated streaks and awards that week's streak FitCoin (1 per day survived that week), which then rolls into
-  // the raffle total the same way as every other FitCoin source (Firestore.getFitcoinTotals sums every doc in
-  // the fitcoin collection).
+  // Challenge.calculateStreakUpdates for why a missed day can't be decided any earlier than that. Persists the
+  // updated streaks and, in the challenge's final week, stores the streak challenge's FitCoin (see below), which then
+  // counts towards the totals and the draw like every other FitCoin source (see Firestore.getFitcoinAwards).
   //
   // Known limitation: if getAllStravaAthletesActivities fails for this week, publishWeeklyResults returns before
   // this ever runs, and - since only the current week's dates are ever evaluated - that week's streak days are
@@ -185,28 +186,18 @@ export class Bot {
     athletes: AthleteWithActivities[],
     weekStartUnix: number,
     weekEndUnix: number,
-  ): Promise<StreakState[]> {
-    const result = await this.computeStreakUpdates(config, athletes, weekDateStrings(weekStartUnix, weekEndUnix));
-    if (!result) return [];
-    const { previousStreaks, updatedStreaks } = result;
+  ): Promise<{ streaks: StreakState[]; streakFitcoin: ContestantFitcoin[] }> {
+    const weekDates = weekDateStrings(weekStartUnix, weekEndUnix);
+    const result = await this.computeStreakUpdates(config, athletes, weekDates);
+    if (!result) return { streaks: [], streakFitcoin: [] };
+    const { updatedStreaks } = result;
 
-    // Only newly counted days earn FitCoin, so re-running the job for the same week awards nothing again (and
-    // must not overwrite the already-stored award with zeros).
-    const streakFitcoin: ContestantFitcoin[] = updatedStreaks
-      .filter((streak) => streak.alive)
-      .map((streak) => ({
-        name: streak.name,
-        fitcoin: streak.currentStreak - (previousStreaks.get(streak.athleteId)?.currentStreak ?? 0),
-      }))
-      .filter((contestant) => contestant.fitcoin > 0);
-
-    // FitCoin first, streaks second: once the streaks are saved a re-run awards nothing for these days, so saving
-    // them before a failed FitCoin write would lose that award for good. The other way round, a re-run just
-    // recomputes the same award and overwrites it.
-    if (streakFitcoin.length > 0) await Firestore.storeStreakFitcoin(streakFitcoin, previousWeekLabel());
+    // Stored with set() (not added), so re-running the final week stores the same award.
+    const streakFitcoin = Challenge.calculateStreakFitcoin(updatedStreaks, weekDates, config.challengeEndDate);
+    if (streakFitcoin.length > 0) await Firestore.storeStreakFitcoin(streakFitcoin, config.challengeStartDate);
     await Firestore.saveStreaks(config.challengeStartDate, updatedStreaks);
 
-    return updatedStreaks;
+    return { streaks: updatedStreaks, streakFitcoin };
   }
 
   // Makes the webhook-fed activity store match a live poll of the same window - see
@@ -286,14 +277,11 @@ export class Bot {
     const contestantFitcoin = Challenge.calculateFitcoin(results);
     const lastWeek = previousWeekLabel();
     await Firestore.storeFitcoin(contestantFitcoin, lastWeek);
-    // The streak award is stored separately (see finalizeStreaks) so it isn't double-counted in the totals,
-    // but it belongs in this week's breakdown so that it adds up to the total below.
-    const streakFitcoin = await Firestore.getStreakFitcoin(lastWeek);
-    await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", Challenge.combineFitcoin(contestantFitcoin, streakFitcoin)));
+    await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", contestantFitcoin));
   }
 
-  private static async publishTotalFitcoin(slack: Slack) {
-    const totalFitcoin = await Firestore.getFitcoinTotals();
+  private static async publishTotalFitcoin(slack: Slack, config: SummerBodiesConfig) {
+    const totalFitcoin = await Firestore.getFitcoinTotals({ startDate: config.challengeStartDate, endDate: config.challengeEndDate });
     await slack.post(Format.fitcoinStatus("Total Fitcoin Results", totalFitcoin));
   }
 }

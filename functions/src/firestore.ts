@@ -7,6 +7,8 @@ import moment from "moment";
 import { StravaWebhookEvent, TokenFromCodeResponse } from "./strava";
 import { lastDayOfPreviousWeek, now } from "./util";
 import { shouldSkipStaleWrite } from "./activityLogic";
+import { FitcoinAward, isChallengeAward, isDatedAward } from "./draw";
+import { Challenge } from "./challenge";
 import { QueuedWebhookEvent } from "./webhookEvents";
 
 // service-account.json in the root directory of the project
@@ -70,33 +72,25 @@ export class Firestore {
     await batch.commit();
   }
 
+  // A one-off correction can be stored the same way under a name with the challenge's start date in it, e.g.
+  // "tie-fix-2027-10-04" - see draw.ts's isChallengeAward for which awards count towards a challenge.
   static async storeFitcoin(fitcoinsContestants: ContestantFitcoin[], weekLabel: string): Promise<void> {
     await this.writeFitcoinDocs(db.collection("fitcoin").doc(weekLabel).collection("athletes"), fitcoinsContestants);
   }
 
-  // Uses a `streak-` prefixed doc id (rather than reusing storeFitcoin's date-keyed doc) so a daily streak
-  // award never collides with a weekly award that happens to land on the same calendar day.
-  static async storeStreakFitcoin(fitcoinsContestants: ContestantFitcoin[], dateString: string): Promise<void> {
-    await this.writeFitcoinDocs(db.collection("fitcoin").doc(`streak-${dateString}`).collection("athletes"), fitcoinsContestants);
+  // The streak challenge's one award, made at the end of the challenge (see Bot.finalizeStreaks), keyed by the
+  // challenge's start date so it never collides with a weekly award.
+  static async storeStreakFitcoin(fitcoinsContestants: ContestantFitcoin[], challengeStartDate: string): Promise<void> {
+    await this.writeFitcoinDocs(db.collection("fitcoin").doc(`streak-${challengeStartDate}`).collection("athletes"), fitcoinsContestants);
   }
 
-  static async getStreakFitcoin(dateString: string): Promise<ContestantFitcoin[]> {
-    const docs = await db.collection("fitcoin").doc(`streak-${dateString}`).collection("athletes").get();
-    return docs.docs.map((doc) => ({ name: doc.id, fitcoin: doc.data().fitcoin }));
-  }
-
-  // Scoped under the challenge's start date (like fitcoin/<date>/athletes/<name> above) so a new challenge run
-  // - a new year's challengeStartDate - starts every athlete fresh, instead of inheriting a prior run's
-  // `alive: false` and staying permanently eliminated.
+  // Scoped under the challenge's start date so a new challenge run - a new year's challengeStartDate - starts every
+  // athlete fresh, instead of inheriting a prior run's streaks.
   static async getStreaks(challengeStartDate: string): Promise<Map<string, StreakState>> {
     const docs = await db.collection("streaks").doc(challengeStartDate).collection("athletes").get();
     const streaks = new Map<string, StreakState>();
     docs.forEach((doc) => {
-      const streak = doc.data() as StreakState;
-      // Docs saved before lastEvaluatedDate existed were only ever written by the Monday weekly job, for the week
-      // that had just ended - so derive it from the write time, or re-running that week would count it twice.
-      streak.lastEvaluatedDate ??= lastDayOfPreviousWeek(moment(doc.updateTime.toMillis()));
-      streaks.set(doc.id, streak);
+      streaks.set(doc.id, Challenge.withStreakDefaults(doc.data() as StreakState, lastDayOfPreviousWeek(moment(doc.updateTime.toMillis()))));
     });
     return streaks;
   }
@@ -118,29 +112,25 @@ export class Firestore {
     await batch.commit();
   }
 
-  static async getFitcoinTotals(): Promise<ContestantFitcoin[]> {
-    const collection = db.collection("fitcoin");
-    const docs = await collection.listDocuments();
-    let contestants = new Map<string, number>();
-    for (const doc of docs) {
+  // Every FitCoin award of the challenge from `challenge.startDate` to `endDate`, one per person per award doc (a
+  // week's results, the streak challenge) - see draw.ts's isChallengeAward for which docs count. The lucky draw's
+  // tickets are worked out from these (see draw.ts).
+  static async getFitcoinAwards(challenge: { startDate: string; endDate: string }): Promise<FitcoinAward[]> {
+    const awards: FitcoinAward[] = [];
+    for (const doc of await db.collection("fitcoin").listDocuments()) {
+      if (!isDatedAward(doc.id)) console.warn(`FitCoin award "${doc.id}" names no week or date, so it never counts - see draw.ts's isChallengeAward`);
+      if (!isChallengeAward(doc.id, challenge)) continue;
       const athletes = await doc.collection("athletes").get();
-      athletes.forEach((doc) => {
-        const data = doc.data();
-        let total = contestants.get(doc.id) || 0;
-        total += data.fitcoin;
-        contestants.set(doc.id, total);
-      });
+      athletes.forEach((athlete) => awards.push({ name: athlete.id, award: doc.id, fitcoin: athlete.data().fitcoin }));
     }
+    return awards;
+  }
 
-    let res: ContestantFitcoin[] = [];
-    contestants.forEach((fitcoin, name) => {
-      const athlete: ContestantFitcoin = {
-        name: name,
-        fitcoin: fitcoin,
-      };
-      res.push(athlete);
-    });
-    return res.sort(compareContestantFitcoin);
+  // Everyone's FitCoin total for the challenge from `challenge.startDate` to `endDate` - see getFitcoinAwards.
+  static async getFitcoinTotals(challenge: { startDate: string; endDate: string }): Promise<ContestantFitcoin[]> {
+    const totals = new Map<string, number>();
+    for (const { name, fitcoin } of await this.getFitcoinAwards(challenge)) totals.set(name, (totals.get(name) ?? 0) + fitcoin);
+    return [...totals].map(([name, fitcoin]) => ({ name, fitcoin })).sort(compareContestantFitcoin);
   }
 
   static async storeBackup(dataSnapshot: string) {

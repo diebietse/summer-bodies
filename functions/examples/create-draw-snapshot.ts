@@ -3,7 +3,7 @@
 // * Valid config loaded on firestore
 // * A service-account.json file with a firestore service account in the project root directory
 // * The challenge's final weekly results already run (they store its last week's FitCoin)
-// Freezes the lucky draw entries (everyone's FitCoin total and ticket range), the prizes and the drand round
+// Freezes the lucky draw entries (everyone's weekly FitCoin, tickets and ticket range), the prizes and the drand round
 // published at the draw time into a snapshot, stores it (once - it can never be overwritten) and prints its
 // SHA-256 fingerprint and its /draw link, whose random id is the only way to read it. Post the fingerprint, the draw
 // time and the link in Slack before the draw - see README.md "Lucky Draw". --dry-run prints the snapshot without
@@ -31,12 +31,8 @@ async function main() {
     console.warn(`Warning: ${problem}. Continuing as it's a dry run.\n`);
   }
 
-  const snapshot = buildDrawSnapshot(
-    await Firestore.getFitcoinTotals(),
-    { startDate: config.challengeStartDate, endDate: config.challengeEndDate },
-    drawTime.unix(),
-    new Date(),
-  );
+  const challenge = { startDate: config.challengeStartDate, endDate: config.challengeEndDate };
+  const snapshot = buildDrawSnapshot(await Firestore.getFitcoinAwards(challenge), challenge, drawTime.unix(), new Date());
   const text = JSON.stringify(snapshot, null, 2);
   const fingerprint = createHash("sha256").update(text, "utf8").digest("hex");
 
