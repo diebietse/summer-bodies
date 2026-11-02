@@ -162,7 +162,12 @@ Locally, `/preview-draw` shows the page with made-up entries. How the reveal ani
 
 For local development, service account credentials can be created by following [getting started][getting-started] Google guide. Generate JSON service account credentials. Place the credentials in the project root directory and ensure it is named `service-account.json`.
 
+### Node Versions
+
+The website runs on the latest Node LTS (`website/.nvmrc`). The functions run on Node 24 (`functions/.nvmrc`, `engines` in `functions/package.json`), as Cloud Functions only has Node 26 in preview and the Firebase CLI can't deploy it yet. Once Node 26 is generally available on [Cloud Functions][functions-runtimes] and the Firebase CLI deploys `nodejs26`, move the functions to it too: both `.nvmrc` files, `engines` and `@types/node`. Going by Node 22 (LTS on 29 October 2024, generally available on Cloud Functions on 18 November 2024), that should be late 2026.
+
 [firestore]: https://firebase.google.com/docs/firestore
+[functions-runtimes]: https://cloud.google.com/functions/docs/runtime-support
 [getting-started]: https://cloud.google.com/docs/authentication/getting-started
 [google-functions]: https://cloud.google.com/functions
 [slack]: https://slack.com
