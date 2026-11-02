@@ -3,6 +3,7 @@ import { Firestore, SummerBodiesConfig } from "./firestore";
 import { Strava } from "./strava";
 import { errorMessage, isExpectedStravaCodeError, reportError } from "./errorReporting";
 import { backfillAthleteActivities } from "./activityStore";
+import { registerAthlete } from "./registration";
 import { webhookPostResponse, webhookVerificationResponse } from "./activityLogic";
 import { dateStringUnix, now } from "./util";
 
@@ -18,12 +19,17 @@ export class Api {
       try {
         config = await Firestore.getConfig();
         const token = await Strava.getTokenFromCode(config.stravaClientId, config.stravaClientSecret, code);
-        const alreadyRegistered = await Firestore.athleteIsRegistered(token.athlete.id);
-        if (alreadyRegistered) {
+        const { stravaClientId, stravaClientSecret } = config;
+        const registered = await registerAthlete(token, {
+          isRegistered: (athleteId) => Firestore.athleteIsRegistered(athleteId),
+          store: (newToken) => Firestore.storeAthlete(newToken),
+          saveToken: (athleteId, refreshToken) => Firestore.updateAthleteRefreshToken(athleteId.toString(), refreshToken),
+          revoke: (refreshToken) => Strava.revokeToken(stravaClientId, stravaClientSecret, refreshToken),
+          reportError: (context, error) => reportError(context, error, config),
+        });
+        if (!registered) {
           res.status(200).json({ okay: true, message: "You are already registered" });
         } else {
-          await Firestore.storeAthlete(token);
-
           // Backfill: webhooks only fire for *future* activity changes, so without this, a mid-challenge
           // registrant's activities from earlier in the challenge would be invisible until the next weekly
           // reconciliation poll. Failure here is non-fatal to registration itself - the gap just waits for

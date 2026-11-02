@@ -153,7 +153,7 @@ export class Firestore {
     return res;
   }
 
-  static async athleteIsRegistered(athleteId: number): Promise<Boolean> {
+  static async athleteIsRegistered(athleteId: number): Promise<boolean> {
     const athlete = db.collection("athletes").doc(athleteId.toString());
     return await athlete.get().then((data) => {
       return data.exists;
@@ -179,6 +179,10 @@ export class Firestore {
       refreshToken: data.refresh_token,
     };
     await doc.create({ ...athlete });
+  }
+
+  static async updateAthleteRefreshToken(athleteId: string, refreshToken: string): Promise<void> {
+    await db.collection("athletes").doc(athleteId).update({ refreshToken });
   }
 
   static async updateAthletesRefreshToken(athletes: Athlete[]) {
