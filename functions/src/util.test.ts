@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import moment from "moment";
 
-import { lastDayOfPreviousWeek, weekDateStrings, weekLabel, weeksAgo, weeksAgoUnix } from "./util";
+import { datePretty, dateStringUnix, lastDayOfPreviousWeek, weekDateStrings, weekLabel, weeksAgo, weeksAgoUnix } from "./util";
 
 // SAST is UTC+2, so Monday 00:00 SAST is Sunday 22:00 UTC.
 test("weekDateStrings lists every day from start (inclusive) to end (exclusive)", () => {
@@ -40,4 +40,12 @@ test("lastDayOfPreviousWeek is the Sunday before the SAST week containing the in
   // The weekly job runs Mondays 09:30 SAST.
   assert.equal(lastDayOfPreviousWeek(moment.utc("2026-10-12T07:30:00Z")), "2026-10-11");
   assert.equal(lastDayOfPreviousWeek(moment.utc("2026-10-11T21:30:00Z")), "2026-10-04");
+});
+
+test("dateStringUnix and datePretty convert SAST calendar dates both ways, whatever the server's timezone", () => {
+  const monday = dateStringUnix("2027-10-25");
+
+  assert.equal(monday, Date.parse("2027-10-25T00:00:00+02:00") / 1000);
+  assert.equal(datePretty(monday), "2027-10-25");
+  assert.equal(datePretty(monday - 1), "2027-10-24");
 });

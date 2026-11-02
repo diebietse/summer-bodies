@@ -5,18 +5,7 @@ import { AthleteWithActivities, ContestantFitcoin, RegisteredAthlete, StreakStat
 import { Challenge, IgnoredDuplicate } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
-import {
-  currentWeekUnix,
-  previousWeekLabel,
-  previousWeekUnix,
-  now,
-  nextWeekUnix,
-  nowPretty,
-  lastWeekPretty,
-  todayUnix,
-  weekDateStrings,
-  weekLabel,
-} from "./util";
+import { currentWeekUnix, datePretty, previousWeekUnix, now, nextWeekUnix, nowPretty, todayUnix, weekDateStrings, weekLabel } from "./util";
 import { errorMessage, reportError, reportWarning } from "./errorReporting";
 import { checkWebhookLiveness, getAthletesActivitiesFromStore, sweepStuckWebhookEvents, syncActivitiesIntoStore } from "./activityStore";
 import crypto from "crypto";
@@ -103,14 +92,17 @@ export class Bot {
     });
   }
 
-  static async publishWeeklyResults() {
+  // Scores last week by default - the Monday job. `weekStartUnix` (a Monday 00:00 SAST) scores another week instead,
+  // e.g. a final week whose run failed and wasn't re-run before the next Monday (see
+  // examples/publish-weekly-results.ts): the streak award is only stored when the challenge's final week is scored.
+  static async publishWeeklyResults(weekStartUnix: number = previousWeekUnix()) {
     await this.runScheduledJob("publishWeeklyResults", async () => {
       const config = await Firestore.getConfig();
       const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
       const slack = new Slack(config.slackWebhookUrl, config.slackChannelWeekly);
 
-      const previousWeek = previousWeekUnix();
-      const currentWeek = currentWeekUnix();
+      const previousWeek = weekStartUnix;
+      const currentWeek = moment.unix(weekStartUnix).add(1, "week").unix();
       const timeNow = now();
       const allActivities = await this.getAllStravaAthletesActivities(strava, previousWeek, currentWeek);
 
@@ -140,7 +132,7 @@ export class Bot {
       results.athletes = this.mapRegisteredAthletes(allActivities.athletesWithActivities);
       // Stored before the totals are read, so they include last week - and the streak award, in the final week.
       const weekFitcoin = Challenge.calculateFitcoin(results);
-      await Firestore.storeFitcoin(weekFitcoin, previousWeekLabel());
+      await Firestore.storeFitcoin(weekFitcoin, weekLabel(moment.unix(previousWeek)));
       results.fitcoin = { week: weekFitcoin, total: await this.challengeFitcoinTotals(config) };
       if (streakFitcoin.length > 0) results.fitcoin.streak = streakFitcoin;
       await Firestore.storeResults(id, JSON.stringify(results));
@@ -148,7 +140,7 @@ export class Bot {
       const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
       const images = await this.screenshotResults(resultsUrl, `weekly-results-${id}`);
 
-      await this.publishFinal(slack, resultsUrl, images);
+      await this.publishFinal(slack, resultsUrl, images, previousWeek, currentWeek);
     });
   }
 
@@ -181,11 +173,11 @@ export class Bot {
   // counts towards the totals and the draw like every other FitCoin source (see Firestore.getFitcoinAwards).
   //
   // Known limitation: if getAllStravaAthletesActivities fails for this week, publishWeeklyResults returns before
-  // this ever runs, and - since only the current week's dates are ever evaluated - that week's streak days are
-  // never retried later. This mirrors how a failed week already skips the leaderboard/goal scoring entirely
-  // elsewhere in this file; there's no backfill mechanism for any of it. The webhook's athlete-deauthorization
-  // handling should make the usual cause (one athlete's revoked/invalid token blocking the whole batch) far
-  // less common than it was before webhooks.
+  // this ever runs, and - since only the scored week's dates are ever evaluated - that week's streak days (and, for
+  // the challenge's final week, the streak award) wait until the week is re-run with
+  // examples/publish-weekly-results.ts --week, like its leaderboard and goal scoring. The webhook's
+  // athlete-deauthorization handling should make the usual cause (one athlete's revoked/invalid token blocking the
+  // whole batch) far less common than it was before webhooks.
   private static async finalizeStreaks(
     config: SummerBodiesConfig,
     athletes: AthleteWithActivities[],
@@ -274,8 +266,12 @@ export class Bot {
     await slack.postResults(`New in progress results for ${nowPretty()}!\nSee the screenshots below`, images, resultsUrl);
   }
 
-  private static async publishFinal(slack: Slack, resultsUrl: string, images: ResultsImage[]) {
-    await slack.postResults(`The final results for ${lastWeekPretty()} are out!\nSee the screenshots below`, images, resultsUrl);
+  private static async publishFinal(slack: Slack, resultsUrl: string, images: ResultsImage[], weekStartUnix: number, weekEndUnix: number) {
+    await slack.postResults(
+      `The final results for ${datePretty(weekStartUnix)} - ${datePretty(weekEndUnix)} are out!\nSee the screenshots below`,
+      images,
+      resultsUrl,
+    );
   }
 
   // The daily update's FitCoin: this week's so far, and the total so far. Only the weekly results store FitCoin, so

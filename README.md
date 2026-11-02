@@ -132,7 +132,7 @@ npm run ts ./examples/publish-daily-updates.ts -- --live
 npm run ts ./examples/publish-weekly-results.ts -- --live
 ```
 
-The weekly script stores last week's real FitCoin and streaks whichever channel it posts to, so only run it when the Monday run failed (re-running after a successful run can leave stale FitCoin behind), and before the next Monday, since "last week" is relative to now.
+The weekly script stores last week's real FitCoin and streaks whichever channel it posts to, so only run it when the Monday run failed (re-running after a successful run can leave stale FitCoin behind). "Last week" is relative to now; after the next Monday, pass the Monday the failed week started on, e.g. `--week 2027-10-25`. Re-run missed weeks oldest first, and always re-run a failed final week: the streak challenge's FitCoin is only stored when the final week is scored.
 
 ## Lucky Draw
 

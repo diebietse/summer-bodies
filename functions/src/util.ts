@@ -25,6 +25,11 @@ export function lastWeekPretty(): string {
   return `${weeksAgo(1).format("YYYY-MM-DD")} - ${weeksAgo(0).format("YYYY-MM-DD")}`;
 }
 
+// The SAST calendar date ("YYYY-MM-DD") of a Unix time.
+export function datePretty(unixTime: number): string {
+  return challengeTime(moment.unix(unixTime)).format("YYYY-MM-DD");
+}
+
 // Labels a week's stored fitcoin docs by its SAST Monday (e.g. "Mon Oct 05 2026"), whatever the server's timezone.
 // The format matches Date.toDateString(), which existing docs were keyed by, so re-running an old week overwrites
 // its doc instead of adding a second one that would double-count in the totals.
