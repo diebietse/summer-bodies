@@ -4,13 +4,16 @@
 //   update the hardcoded filename below to match
 
 import { Challenge } from "../src/challenge";
-import { Format } from "../src/format";
 import { readFileSync } from "fs";
 
 async function printProgress() {
   const allActivities = JSON.parse(readFileSync("excluded/athletesWithActivities-2025-09-15.json", "utf8"));
   const goalResults = Challenge.calculateGoalResults(allActivities, 10);
-  console.log(Format.goalStatus("In Progress Goal Status", goalResults));
+  console.table(
+    goalResults
+      .filter((goal) => goal.activities > 0)
+      .map(({ name, totalTimeMin, activities, achieved }) => ({ name, totalTimeMin, activities, achieved })),
+  );
 }
 
 printProgress();

@@ -1,8 +1,7 @@
 import { Firestore, SummerBodiesConfig } from "./firestore";
 import { GetAllAthletesActivitiesResult, Strava } from "./strava";
 import { ResultsImage, Slack } from "./slack";
-import { Format } from "./format";
-import { AthleteWithActivities, ChallengeResults, ContestantFitcoin, RegisteredAthlete, StreakState } from "./challenge-models";
+import { AthleteWithActivities, ContestantFitcoin, RegisteredAthlete, StreakState } from "./challenge-models";
 import { Challenge, IgnoredDuplicate } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
@@ -16,10 +15,13 @@ import {
   lastWeekPretty,
   todayUnix,
   weekDateStrings,
+  weekLabel,
 } from "./util";
 import { errorMessage, reportError, reportWarning } from "./errorReporting";
 import { checkWebhookLiveness, getAthletesActivitiesFromStore, sweepStuckWebhookEvents, syncActivitiesIntoStore } from "./activityStore";
 import crypto from "crypto";
+import moment from "moment";
+import { isChallengeAward } from "./draw";
 
 export class Bot {
   // Runs a scheduled job, reporting any uncaught failure (Puppeteer, Firestore, a bad Strava response, ...)
@@ -91,6 +93,7 @@ export class Bot {
       results.currentTime = timeNow;
       results.streaks = await this.previewStreaks(config, athletesWithActivities, currentWeek);
       results.athletes = this.mapRegisteredAthletes(athletesWithActivities);
+      results.fitcoin = await this.fitcoinSoFar(config, Challenge.calculateFitcoin(results), currentWeek);
       await Firestore.storeResults(id, JSON.stringify(results));
 
       const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
@@ -135,15 +138,17 @@ export class Bot {
       const { streaks, streakFitcoin } = await this.finalizeStreaks(config, allActivities.athletesWithActivities, previousWeek, currentWeek);
       results.streaks = streaks;
       results.athletes = this.mapRegisteredAthletes(allActivities.athletesWithActivities);
+      // Stored before the totals are read, so they include last week - and the streak award, in the final week.
+      const weekFitcoin = Challenge.calculateFitcoin(results);
+      await Firestore.storeFitcoin(weekFitcoin, previousWeekLabel());
+      results.fitcoin = { week: weekFitcoin, total: await this.challengeFitcoinTotals(config) };
+      if (streakFitcoin.length > 0) results.fitcoin.streak = streakFitcoin;
       await Firestore.storeResults(id, JSON.stringify(results));
 
       const resultsUrl = `https://summer-bodies.web.app/results/${id}`;
       const images = await this.screenshotResults(resultsUrl, `weekly-results-${id}`);
 
       await this.publishFinal(slack, resultsUrl, images);
-      await this.publishWeeklyFitcoin(slack, results);
-      if (streakFitcoin.length > 0) await slack.post(Format.fitcoinStatus("Streak Challenge Fitcoin (longest streak)", streakFitcoin));
-      await this.publishTotalFitcoin(slack, config);
     });
   }
 
@@ -252,7 +257,7 @@ export class Bot {
     return { ...results, athletesWithActivities: deduplicated, ignoredDuplicates: ignored, polledAthletes: results.athletesWithActivities };
   }
 
-  // Screenshots each section of the results page separately (streak, goals, challenges) and uploads them to
+  // Screenshots each section of the results page separately (streak, FitCoin, goals, challenges) and uploads them to
   // Firebase Storage, so Slack shows several readable images instead of one tall, scaled-down page.
   private static async screenshotResults(resultsUrl: string, fileNamePrefix: string): Promise<ResultsImage[]> {
     const sections = await Puppeteer.screenshotSections(`${resultsUrl}?screenshot=true`);
@@ -273,15 +278,32 @@ export class Bot {
     await slack.postResults(`The final results for ${lastWeekPretty()} are out!\nSee the screenshots below`, images, resultsUrl);
   }
 
-  private static async publishWeeklyFitcoin(slack: Slack, results: ChallengeResults) {
-    const contestantFitcoin = Challenge.calculateFitcoin(results);
-    const lastWeek = previousWeekLabel();
-    await Firestore.storeFitcoin(contestantFitcoin, lastWeek);
-    await slack.post(Format.fitcoinStatus("Last Week's Fitcoin Results", contestantFitcoin));
+  // The daily update's FitCoin: this week's so far, and the total so far. Only the weekly results store FitCoin, so
+  // the total is the stored weeks plus this one - unless this week is outside the challenge, when it won't count. And
+  // on Monday morning, before the weekly results (09:30) have stored last week, last week is added as the activity
+  // store has it, so the total doesn't drop by a week for half an hour.
+  private static async fitcoinSoFar(
+    config: SummerBodiesConfig,
+    weekFitcoin: ContestantFitcoin[],
+    weekStartUnix: number,
+  ): Promise<{ week: ContestantFitcoin[]; total: ContestantFitcoin[] }> {
+    const challenge = { startDate: config.challengeStartDate, endDate: config.challengeEndDate };
+    const lastWeek = weekLabel(moment.unix(weekStartUnix).subtract(1, "week"));
+    let unstoredLastWeek: ContestantFitcoin[] | undefined;
+    if (isChallengeAward(lastWeek, challenge) && !(await Firestore.hasWeeklyFitcoin(lastWeek))) {
+      const lastWeekStart = moment.unix(weekStartUnix).subtract(1, "week").unix();
+      const { athletes } = Challenge.removeDuplicateActivities(await getAthletesActivitiesFromStore(lastWeekStart, weekStartUnix));
+      unstoredLastWeek = Challenge.calculateFitcoin(Challenge.calculateResults(athletes));
+    }
+    return Challenge.dailyFitcoin({
+      stored: await this.challengeFitcoinTotals(config),
+      week: weekFitcoin,
+      weekCounts: isChallengeAward(weekLabel(moment.unix(weekStartUnix)), challenge),
+      unstoredLastWeek,
+    });
   }
 
-  private static async publishTotalFitcoin(slack: Slack, config: SummerBodiesConfig) {
-    const totalFitcoin = await Firestore.getFitcoinTotals({ startDate: config.challengeStartDate, endDate: config.challengeEndDate });
-    await slack.post(Format.fitcoinStatus("Total Fitcoin Results", totalFitcoin));
+  private static async challengeFitcoinTotals(config: SummerBodiesConfig): Promise<ContestantFitcoin[]> {
+    return Firestore.getFitcoinTotals({ startDate: config.challengeStartDate, endDate: config.challengeEndDate });
   }
 }

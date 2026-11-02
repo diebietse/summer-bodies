@@ -6,13 +6,12 @@
 
 import { Firestore } from "../src/firestore";
 import axios from "axios";
-import { Format } from "../src/format";
 
 async function printFitcoin() {
   try {
     const config = await Firestore.getConfig();
     const totalFitcoin = await Firestore.getFitcoinTotals({ startDate: config.challengeStartDate, endDate: config.challengeEndDate });
-    console.log(Format.fitcoinStatus("Total Fitcoin Results", totalFitcoin));
+    console.table(totalFitcoin);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.log(`Could not get total fitcoin: ${error.message}`);

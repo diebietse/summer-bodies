@@ -5,7 +5,6 @@
 // * Some activities last week from registered athletes
 
 import { Challenge } from "../src/challenge";
-import { Format } from "../src/format";
 import { Firestore } from "../src/firestore";
 import axios from "axios";
 import { Strava } from "../src/strava";
@@ -23,7 +22,11 @@ async function printActivities() {
       process.exit(1);
     }
     const progress = Challenge.calculateGoalResults(athletesWithActivities, 10);
-    console.log(Format.goalStatus("In Progress Goal Status", progress));
+    console.table(
+      progress
+        .filter((goal) => goal.activities > 0)
+        .map(({ name, totalTimeMin, activities, achieved }) => ({ name, totalTimeMin, activities, achieved })),
+    );
   } catch (error) {
     if (axios.isAxiosError(error)) {
       console.log(`Could not get activities: ${error.message}`);

@@ -5,7 +5,6 @@
 // Writes the calculated results to excluded/calculateResults.json
 
 import { Challenge } from "../src/challenge";
-import { Format } from "../src/format";
 import { readFileSync, writeFileSync } from "fs";
 import { now, weeksAgoUnix } from "../src/util";
 
@@ -24,12 +23,12 @@ async function printResults() {
   console.log(`Saving calculateResults to '${fileName}'`);
   writeFileSync(fileName, JSON.stringify(results));
 
-  results.topResults.forEach((event) => {
-    const eventTableString = Format.finalEventTop(event);
-    if (eventTableString) {
-      console.log(eventTableString);
+  for (const event of results.topResults) {
+    for (const grouping of event.groupings) {
+      console.log(`${event.name} - ${grouping.name}${grouping.unit ? ` (${grouping.unit})` : ""}`);
+      console.table(grouping.contestants.map(({ name, total, fitcoin }) => ({ name, total, fitcoin })));
     }
-  });
+  }
 }
 
 printResults();

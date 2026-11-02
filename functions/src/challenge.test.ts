@@ -476,3 +476,35 @@ test("overlap between different athletes is not a duplicate", () => {
   assert.equal(result[0].activities.length, 1);
   assert.equal(result[1].activities.length, 1);
 });
+
+test("addFitcoin sums each person's FitCoin across lists, highest first", () => {
+  assert.deepEqual(
+    Challenge.addFitcoin(
+      [
+        { name: "Alex", fitcoin: 10 },
+        { name: "Blake", fitcoin: 4 },
+      ],
+      [{ name: "Blake", fitcoin: 9 }],
+    ),
+    [
+      { name: "Blake", fitcoin: 13 },
+      { name: "Alex", fitcoin: 10 },
+    ],
+  );
+});
+
+test("dailyFitcoin adds this week to the stored total, and last week while it isn't stored yet", () => {
+  const stored = [{ name: "Alex", fitcoin: 50 }];
+  const week = [{ name: "Alex", fitcoin: 5 }];
+
+  assert.deepEqual(Challenge.dailyFitcoin({ stored, week, weekCounts: true }).total, [{ name: "Alex", fitcoin: 55 }]);
+  assert.deepEqual(Challenge.dailyFitcoin({ stored, week, weekCounts: true, unstoredLastWeek: [{ name: "Alex", fitcoin: 30 }] }).total, [
+    { name: "Alex", fitcoin: 85 },
+  ]);
+});
+
+test("dailyFitcoin leaves out a week outside the challenge", () => {
+  const result = Challenge.dailyFitcoin({ stored: [{ name: "Alex", fitcoin: 50 }], week: [{ name: "Alex", fitcoin: 5 }], weekCounts: false });
+
+  assert.deepEqual(result, { week: [], total: [{ name: "Alex", fitcoin: 50 }] });
+});

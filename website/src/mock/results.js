@@ -132,5 +132,23 @@ export const mockResults = {
     { athleteId: "5", name: "Taylor Brooks", currentStreak: 12, longestStreak: 12 },
     { athleteId: "6", name: "Jordan Blake", currentStreak: 0, longestStreak: 0 },
   ],
+  fitcoin: {
+    week: [
+      { name: "Jamie Lee", fitcoin: 38 },
+      { name: "Taylor Brooks", fitcoin: 31 },
+      { name: "Alex Carter", fitcoin: 27 },
+      { name: "Morgan Reyes", fitcoin: 15 },
+      { name: "Riley Cohen", fitcoin: 10 },
+    ],
+    total: [
+      { name: "Jamie Lee", fitcoin: 112 },
+      { name: "Alex Carter", fitcoin: 98 },
+      { name: "Taylor Brooks", fitcoin: 98 },
+      { name: "Morgan Reyes", fitcoin: 61 },
+      { name: "Casey Nguyen", fitcoin: 40 },
+      { name: "Riley Cohen", fitcoin: 22 },
+      { name: "Jordan Blake", fitcoin: 9 },
+    ],
+  },
   athletes: [{ name: "Alex Carter" }, { name: "Casey Nguyen" }, { name: "Jamie Lee" }, { name: "Jordan Blake" }, { name: "Morgan Reyes" }, { name: "Riley Cohen" }, { name: "Taylor Brooks" }],
 };

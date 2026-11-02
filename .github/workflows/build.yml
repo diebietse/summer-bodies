@@ -38,5 +38,7 @@ jobs:
         working-directory: website
       - run: npx eslint .
         working-directory: website
+      - run: npm test
+        working-directory: website
       - run: npm run prettier-check
         working-directory: website

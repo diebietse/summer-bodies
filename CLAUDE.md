@@ -21,6 +21,7 @@ npm run prettier-check # prettier --check "**/*.ts" - every .ts file in the pack
 
 ```
 npx eslint .
+npm test               # node --test "src/**/*.test.js"
 npm run prettier-check # prettier --check "src/**/*.{js,vue}" "scripts/**/*.mjs"
 ```
 

@@ -36,6 +36,9 @@
           <li v-if="hasStreaks" class="nav-item" role="presentation">
             <button class="nav-link" :class="{ active: activeTab === 'streak' }" @click="activeTab = 'streak'" type="button">Streak Challenge</button>
           </li>
+          <li v-if="hasFitcoin" class="nav-item" role="presentation">
+            <button class="nav-link" :class="{ active: activeTab === 'fitcoin' }" @click="activeTab = 'fitcoin'" type="button">FitCoin</button>
+          </li>
           <li v-if="hasAthletes" class="nav-item" role="presentation">
             <button class="nav-link" :class="{ active: activeTab === 'athletes' }" @click="activeTab = 'athletes'" type="button">Registered Athletes</button>
           </li>
@@ -131,6 +134,48 @@
           <p v-else-if="hiddenStreakCount > 0" class="text-muted mt-3 small text-center">{{ hiddenStreakCount }} earlier {{ hiddenStreakCount === 1 ? "elimination" : "eliminations" }} not shown.</p>
           <p v-if="longestStreakFormat" class="text-muted mt-3 small text-center">Log at least 1km on foot every day. Missing a day ends your current streak, but you can start a new one any day. At the end of the challenge you earn 1 FitCoin for each day of your longest streak.</p>
           <p v-else class="text-muted mt-3 small text-center">Miss a day of at least 1km on foot and you're out - eliminations are only final once the week's Sunday 23:59 upload deadline has passed.</p>
+        </div>
+      </div>
+
+      <!-- FitCoin Tab -->
+      <div v-if="hasFitcoin && (activeTab === 'fitcoin' || screenshot)" class="tab-content" data-screenshot="fitcoin" data-screenshot-title="FitCoin">
+        <div class="fitcoin-results">
+          <h2 class="section-title">FitCoin</h2>
+          <p v-if="isResultsInProgress" class="text-muted text-center mb-4">This week's FitCoin so far - not final until Monday's results.</p>
+
+          <div class="card">
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table mb-0">
+                  <thead class="table-dark">
+                    <tr>
+                      <th scope="col">#</th>
+                      <th scope="col">Name</th>
+                      <th scope="col">{{ isResultsInProgress ? "This Week So Far" : "This Week" }}</th>
+                      <th v-if="hasStreakFitcoin" scope="col">Streak Challenge</th>
+                      <th scope="col">{{ isResultsInProgress ? "Total So Far" : "Total" }}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in displayedFitcoinRows" :key="row.name">
+                      <td>
+                        <span class="position-badge" :class="getPositionClass(row.rank)">
+                          {{ row.rank }}
+                        </span>
+                      </td>
+                      <td class="fw-bold">{{ row.name }}</td>
+                      <td>{{ row.week || "-" }}</td>
+                      <td v-if="hasStreakFitcoin">{{ row.streak || "-" }}</td>
+                      <td class="fw-bold">{{ row.total }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <p v-if="hiddenFitcoinCount > 0" class="text-muted mt-3 small text-center">{{ hiddenFitcoinCount }} more on the website.</p>
+          <p class="text-muted mt-3 small text-center">FitCoin earns tickets in the lucky draw at the end of the challenge - each week's FitCoin squared, so big weeks count for more.</p>
         </div>
       </div>
 
@@ -288,10 +333,11 @@
 import axios from "axios";
 import { API_BASE_URL } from "../apiBase";
 import { APP_NAME } from "../config";
+import { fitcoinRows, topRows } from "../results/fitcoinTable";
 
 // Keep in sync with the tab buttons/content blocks in the template - also doubles as the allowlist for the
 // ?tab= query param, so an unrecognized value can't be used to land on a broken/blank state.
-const VALID_TABS = ["challenges", "goals", "streak", "athletes"];
+const VALID_TABS = ["challenges", "goals", "streak", "fitcoin", "athletes"];
 
 // Matches ActivityType.Other's value in functions/src/challenge-models.ts - kept as a local constant rather
 // than importing across the website/functions package boundary for one string.
@@ -379,13 +425,13 @@ export default {
     hasStreaks() {
       return !!this.results && Array.isArray(this.results.streaks) && this.results.streaks.length > 0;
     },
+    // Other pays double per tier from the 2027 rules on - stored results from before keep the rule they were scored
+    // with. Results written by those rules always carry `fitcoin` (even outside the challenge), older ones never do.
+    otherPaysDouble() {
+      return !!this.results.fitcoin;
+    },
     // Streaks from 2027 on pay for the longest streak, which can start any day; older results stored whether a
     // missed day had eliminated the athlete (`alive`) instead.
-    // Other has paid double per tier since the 2027 season - stored results from before keep the rule they were
-    // scored with. By date rather than by the streak format, as results outside the streak challenge have no streaks.
-    otherPaysDouble() {
-      return this.results.startDate >= Date.parse("2027-01-01T00:00:00+02:00") / 1000;
-    },
     longestStreakFormat() {
       return this.hasStreaks && this.results.streaks[0].longestStreak !== undefined;
     },
@@ -420,6 +466,22 @@ export default {
     },
     eliminatedCount() {
       return this.sortedStreaks.filter((s) => !s.alive).length;
+    },
+    hasFitcoin() {
+      return !!this.results?.fitcoin && this.results.fitcoin.total.length > 0;
+    },
+    hasStreakFitcoin() {
+      return (this.results.fitcoin.streak ?? []).length > 0;
+    },
+    fitcoinRows() {
+      return this.hasFitcoin ? fitcoinRows(this.results.fitcoin) : [];
+    },
+    // The Slack screenshot shows the top 20 (and anyone tied with 20th); the page shows everyone.
+    displayedFitcoinRows() {
+      return this.screenshot ? topRows(this.fitcoinRows, 20) : this.fitcoinRows;
+    },
+    hiddenFitcoinCount() {
+      return this.fitcoinRows.length - this.displayedFitcoinRows.length;
     },
     hasAthletes() {
       return !!this.results && Array.isArray(this.results.athletes) && this.results.athletes.length > 0;

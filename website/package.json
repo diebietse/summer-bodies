@@ -8,6 +8,7 @@
     "build": "node scripts/fetch-branding.mjs",
     "preview": "vite preview",
     "lint": "eslint . --fix",
+    "test": "node --test \"src/**/*.test.js\"",
     "prettier-check": "prettier --check \"src/**/*.{js,vue}\" \"scripts/**/*.mjs\"",
     "prettier-fix": "prettier --write \"src/**/*.{js,vue}\" \"scripts/**/*.mjs\"",
     "deploy": "npm run build && firebase deploy --only hosting"

@@ -58,6 +58,10 @@ export interface ChallengeResults {
   // Bot.publishWeeklyResults.
   streaks?: StreakState[];
   athletes?: RegisteredAthlete[];
+  // Shown in the results page's FitCoin tab (results stored before 2027 don't have it). `week` is the period's
+  // FitCoin (so far, while in progress), `streak` the streak challenge's (final results of its last week only), and
+  // `total` everyone's challenge total including both.
+  fitcoin?: { week: ContestantFitcoin[]; streak?: ContestantFitcoin[]; total: ContestantFitcoin[] };
 }
 
 export interface OurEvent {

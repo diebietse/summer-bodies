@@ -27,6 +27,8 @@ Achieve a position on the leader boards at the end of each week and earn FitCoin
 | ------------- | -------------- | ---------  | ---------  | ---------  | ---------  | ---------  |
 | Other         | Duration       | 20 FitCoin | 18 FitCoin | 16 FitCoin | 14 FitCoin | 12 FitCoin |
 
+Each results page has a FitCoin tab with everyone's FitCoin for that week and their total so far, and the Slack posts include it as an image.
+
 ## Streak Challenge
 
 Log at least 1km of an On Foot activity (Run/Walk/Hike) on consecutive days between `challengeStartDate` and `challengeEndDate`. A missed day (once that week's Sunday 23:59 upload deadline has passed) ends your current streak, but you can start a new one the next day - also if you join the challenge late. It's scored once, at the end of the challenge: 1 FitCoin for each day of your longest streak, posted with the final week's results (and counted on its own in the lucky draw). Progress is shown on the results page.

@@ -4,13 +4,12 @@
 // * Registered athletes in firestore
 
 import { Firestore } from "../src/firestore";
-import { Format } from "../src/format";
 import { Athlete } from "../src/challenge-models";
 
 async function printAthletes() {
   const athletes = await Firestore.getRegisteredAthletes();
   const sortedAthletes = athletes.sort((a, b) => (fullName(a) > fullName(b) ? 1 : -1));
-  console.log(Format.athletes(`Registered Athletes (${sortedAthletes.length})`, sortedAthletes));
+  console.table(sortedAthletes.map((athlete) => ({ name: fullName(athlete) })));
 
   console.log(`Total athletes: ${athletes.length}`);
 }

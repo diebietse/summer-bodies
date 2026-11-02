@@ -208,6 +208,25 @@ export class Challenge {
     });
   }
 
+  // Sums each contestant's FitCoin across several lists.
+  static addFitcoin(...lists: ContestantFitcoin[][]): ContestantFitcoin[] {
+    const totals = new Map<string, number>();
+    for (const { name, fitcoin } of lists.flat()) totals.set(name, (totals.get(name) ?? 0) + fitcoin);
+    return [...totals].map(([name, fitcoin]) => ({ name, fitcoin })).sort(compareContestantFitcoin);
+  }
+
+  // The daily update's FitCoin (see Bot.fitcoinSoFar): this week's so far, counted only while the challenge runs, and
+  // a total of the stored weeks, this week, and last week while it isn't stored yet.
+  static dailyFitcoin(fitcoin: {
+    stored: ContestantFitcoin[];
+    week: ContestantFitcoin[];
+    weekCounts: boolean;
+    unstoredLastWeek?: ContestantFitcoin[];
+  }): { week: ContestantFitcoin[]; total: ContestantFitcoin[] } {
+    const week = fitcoin.weekCounts ? fitcoin.week : [];
+    return { week, total: Challenge.addFitcoin(fitcoin.stored, week, fitcoin.unstoredLastWeek ?? []) };
+  }
+
   static calculateFitcoin(results: ChallengeResults): ContestantFitcoin[] {
     const topResults = results.topResults;
     let fitcoinTotals = new Map<string, number>();
