@@ -153,7 +153,12 @@ export function webhookPostResponse(
       warning: `Ignoring a malformed Strava webhook event: ${JSON.stringify(body)}`,
     };
   if (config.stravaWebhookSubscriptionId !== undefined && body.subscription_id !== config.stravaWebhookSubscriptionId) {
-    return { status: 200, body: {}, warning: `Ignoring a Strava webhook event for subscription ${body.subscription_id}` };
+    // Who it was for is logged too - the one way to learn which athletes have authorized another app of ours.
+    return {
+      status: 200,
+      body: {},
+      warning: `Ignoring a Strava webhook event for subscription ${body.subscription_id}: ${body.object_type} ${body.aspect_type} of athlete ${body.owner_id}`,
+    };
   }
   return { status: 200, body: {}, queue: body };
 }

@@ -253,11 +253,12 @@ test("webhookPostResponse turns away a wrong secret (404) and a malformed body (
   assert.equal(wrongSecret.queue ?? malformed.queue, undefined);
 });
 
-test("webhookPostResponse acknowledges but drops an event for another subscription", () => {
-  const response = webhookPostResponse("secret", webhookEvent({ subscription_id: 6 }), ROUTE_CONFIG);
+test("webhookPostResponse acknowledges but drops an event for another subscription, logging whose it was", () => {
+  const response = webhookPostResponse("secret", webhookEvent({ subscription_id: 6, owner_id: 4242 }), ROUTE_CONFIG);
 
   assert.equal(response.status, 200);
   assert.equal(response.queue, undefined);
+  assert.match(response.warning ?? "", /subscription 6: athlete update of athlete 4242/);
 });
 
 test("isLivenessCheckTime covers the challenge's days and the day after, in SAST", () => {
