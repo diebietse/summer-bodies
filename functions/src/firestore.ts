@@ -1,4 +1,4 @@
-import { initializeApp, cert } from "firebase-admin/app";
+import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { CollectionReference, DocumentReference, FieldValue, getFirestore } from "firebase-admin/firestore";
 import * as path from "path";
 import * as fs from "fs";
@@ -22,7 +22,12 @@ if (fs.existsSync(CUSTOM_SERVICE_ACCOUNT)) {
   console.log(`Using custom service account: ${CUSTOM_SERVICE_ACCOUNT}`);
   const { project_id } = JSON.parse(fs.readFileSync(CUSTOM_SERVICE_ACCOUNT, "utf8"));
   const storageBucket = process.env.FIREBASE_STORAGE_BUCKET || `${project_id}.appspot.com`;
-  initializeApp({ credential: cert(CUSTOM_SERVICE_ACCOUNT), storageBucket });
+  // As application default credentials rather than cert(): with cert(), firebase-admin hands the key to the Firestore
+  // client as a `credentials` option, which google-auth-library deprecates with a warning on every run.
+  // Always this file, even if the shell already points GOOGLE_APPLICATION_CREDENTIALS elsewhere - it's what the log
+  // line above names and what projectId comes from.
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = CUSTOM_SERVICE_ACCOUNT;
+  initializeApp({ credential: applicationDefault(), projectId: project_id, storageBucket });
 } else {
   // If no custom service account exists this is deployed on GCP and googles sets it for us
   initializeApp();
