@@ -1,5 +1,6 @@
 // Run with: npm run ts ./examples/remove-athlete.ts -- --id 12345
 //       or: npm run ts ./examples/remove-athlete.ts -- --name "First Last"
+//       (add --force to remove them even if revoking their Strava access fails)
 // Requires:
 // * A service-account.json file with a firestore service account in the project root directory
 //
@@ -9,24 +10,28 @@
 // - deleting only our own copy of their data (without revoking) would leave Strava still counting this
 // athlete as "connected" indefinitely, since nothing ever told Strava the grant should end.
 //
+// If the revoke fails (Strava answers 200 even for a dead token, so it's a real failure), the athlete is left
+// registered - try again later, or pass --force to remove them anyway.
+//
 // It's also the fix if weekly results generation has stopped for everyone: a revoked or otherwise invalid
 // refresh token fails that athlete's Strava fetch, and the weekly results are all-or-nothing - see
 // functions/src/bot.ts. (During the challenge the daily update reports rejected tokens of athletes with recent
-// activities, so it may show sooner.) In that case the revoke call below is expected to
-// fail (the token's already dead) - that's fine, it's logged and the local cleanup proceeds regardless.
+// activities, so it may show sooner.) A dead token still revokes fine.
 
 import { parseArgs } from "node:util";
 import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";
 import { Athlete } from "../src/challenge-models";
 import { errorMessage } from "../src/errorReporting";
+import { revokeThenRemove } from "../src/athleteRemoval";
 
 const {
-  values: { id, name },
+  values: { id, name, force },
 } = parseArgs({
   options: {
     id: { type: "string" },
     name: { type: "string" },
+    force: { type: "boolean" },
   },
 });
 
@@ -63,15 +68,22 @@ async function removeAthlete() {
 
   const config = await Firestore.getConfig();
 
-  try {
-    await Strava.revokeToken(config.stravaClientId, config.stravaClientSecret, athlete.refreshToken);
-    console.log(`Revoked Strava access for ${athlete.id} (${fullName(athlete)}).`);
-  } catch (error) {
-    console.log(`Could not revoke Strava access for ${athlete.id} (${fullName(athlete)}) - likely already revoked: ${errorMessage(error)}`);
+  const label = `${athlete.id} (${fullName(athlete)})`;
+  const { removed, revokeError } = await revokeThenRemove(
+    athlete,
+    {
+      revoke: (refreshToken) => Strava.revokeToken(config.stravaClientId, config.stravaClientSecret, refreshToken),
+      remove: (athleteId) => Firestore.removeAthlete(athleteId, config.challengeStartDate),
+    },
+    force,
+  );
+  if (revokeError) console.error(`Could not revoke Strava access for ${label}: ${errorMessage(revokeError)}`);
+  else console.log(`Revoked Strava access for ${label}.`);
+  if (!removed) {
+    console.error("Not removed - try again later, or pass --force to remove them anyway (their grant then stays on Strava).");
+    process.exit(1);
   }
-
-  await Firestore.removeAthlete(athlete.id.toString(), config.challengeStartDate);
-  console.log(`Removed athlete ${athlete.id} (${fullName(athlete)}).`);
+  console.log(`Removed athlete ${label}.`);
 }
 
 removeAthlete();

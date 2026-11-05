@@ -23,6 +23,7 @@
 import { Firestore } from "../src/firestore";
 import { Strava } from "../src/strava";
 import { errorMessage } from "../src/errorReporting";
+import { revokeThenRemove } from "../src/athleteRemoval";
 import { writeFileSync } from "fs";
 
 async function resetSeason() {
@@ -43,15 +44,12 @@ async function resetSeason() {
   console.log(`Revoking Strava access for and removing ${athletes.length} athletes...`);
   for (const athlete of athletes) {
     const label = `${athlete.id} (${athlete.firstname} ${athlete.lastname})`;
-    try {
-      await Strava.revokeToken(config.stravaClientId, config.stravaClientSecret, athlete.refreshToken);
-      console.log(`  Revoked ${label}`);
-    } catch (error) {
-      // Expected for an athlete whose token was already dead/already deauthorized on Strava's side - continue
-      // regardless, but only after this attempt, never before it (see the ordering note above).
-      console.log(`  Could not revoke ${label} - likely already revoked: ${errorMessage(error)}`);
-    }
-    await Firestore.removeAthlete(athlete.id, config.challengeStartDate);
+    // A failed revoke keeps the athlete (and their token) so a re-run can revoke them - the check below lists them.
+    const { removed, revokeError } = await revokeThenRemove(athlete, {
+      revoke: (refreshToken) => Strava.revokeToken(config.stravaClientId, config.stravaClientSecret, refreshToken),
+      remove: (athleteId) => Firestore.removeAthlete(athleteId, config.challengeStartDate),
+    });
+    console.log(removed ? `  Revoked and removed ${label}` : `  Could not revoke ${label}, kept for a re-run: ${errorMessage(revokeError)}`);
   }
 
   // Don't just trust the per-athlete loop silently: storeAthlete uses doc.create(), and POST /athlete checks
@@ -60,7 +58,7 @@ async function resetSeason() {
   const remaining = await Firestore.getRegisteredAthletes();
   if (remaining.length > 0) {
     console.error(
-      `Postcondition check failed: ${remaining.length} athlete(s) still registered after reset:\n` +
+      `Postcondition check failed: ${remaining.length} athlete(s) still registered after reset - re-run to revoke and remove them:\n` +
         remaining.map((athlete) => `  ${athlete.id}: ${athlete.firstname} ${athlete.lastname}`).join("\n"),
     );
     process.exit(1);

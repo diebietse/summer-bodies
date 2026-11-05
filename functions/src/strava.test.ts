@@ -1,9 +1,9 @@
 // Run with: npm test
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { AxiosError, AxiosHeaders } from "axios";
+import axios, { AxiosError, AxiosHeaders } from "axios";
 
-import { Strava } from "./strava";
+import { Strava, STRAVA_REVOKE_URL } from "./strava";
 import { Athlete } from "./challenge-models";
 
 function athlete(refreshToken: string): Athlete {
@@ -60,4 +60,20 @@ test("populateAthleteActivities doesn't retry on errors other than a rejected re
 
   await assert.rejects(strava.populateAthleteActivities(athlete("old"), 0, 1, async () => "new"));
   assert.equal(calls, 1);
+});
+
+test("revokeToken posts the refresh token to Strava's /oauth/revoke, outside the /api/v3 base URL, with client credentials", async (t) => {
+  const calls: { url: string; body: string; config: any }[] = [];
+  t.mock.method(axios, "post", async (url: string, body: URLSearchParams, config: unknown) => {
+    calls.push({ url, body: body.toString(), config });
+    return { status: 200, data: "" };
+  });
+
+  await Strava.revokeToken("client", "secret", "refresh");
+
+  assert.equal(STRAVA_REVOKE_URL, "https://www.strava.com/oauth/revoke");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, STRAVA_REVOKE_URL);
+  assert.equal(calls[0].body, "token=refresh&token_type_hint=refresh_token");
+  assert.deepEqual(calls[0].config.auth, { username: "client", password: "secret" });
 });

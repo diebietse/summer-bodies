@@ -4,6 +4,7 @@ import { Athlete, Activity, AthleteWithActivities } from "./challenge-models";
 const REFRESH_GRANT_TYPE = "refresh_token";
 const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code";
 const ACTIVITIES_PER_PAGE = 50;
+export const STRAVA_REVOKE_URL = "https://www.strava.com/oauth/revoke";
 
 export class Strava {
   constructor(
@@ -107,12 +108,12 @@ export class Strava {
   // Revokes an athlete's authorization grant on Strava's side - distinct from, and in addition to, deleting
   // our own stored copy of their data (Firestore.removeAthlete). Without this, an athlete we've locally
   // forgotten about still counts as "connected" from Strava's perspective, since nothing ever told Strava the
-  // grant should end. Takes either an access or refresh token. This is the endpoint Strava documents as the
-  // sole supported one from June 2027 onward (the legacy /oauth/deauthorize retires then), so it's used here
-  // unconditionally rather than switched to later.
-  static async revokeToken(clientId: string, clientSecret: string, token: string): Promise<void> {
-    const client = axios.create(this.axiosConfig());
-    await client.post(`oauth/revoke`, new URLSearchParams({ token }), {
+  // grant should end, and Strava ends all of the app's tokens for the athlete. Strava's /oauth/revoke (available since
+  // June 2026, the only deauthorization endpoint from June 2027 - see https://developers.strava.com/docs/authentication/)
+  // lives outside the /api/v3 base URL the other calls use - unlike /oauth/token, it isn't served under /api/v3. It
+  // answers 200 whether or not the token was found, so any failure is a real one, worth trying again.
+  static async revokeToken(clientId: string, clientSecret: string, refreshToken: string): Promise<void> {
+    await axios.post(STRAVA_REVOKE_URL, new URLSearchParams({ token: refreshToken, token_type_hint: "refresh_token" }), {
       auth: { username: clientId, password: clientSecret },
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
     });
