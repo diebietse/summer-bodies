@@ -6,6 +6,9 @@ import { AxiosError, AxiosHeaders } from "axios";
 import {
   handleQueuedWebhookEvent,
   processWebhookEvent,
+  recheckAthleteActivities,
+  recheckRecentActivityOwners,
+  RecheckDeps,
   QueueDeps,
   QueuedWebhookEvent,
   WEBHOOK_EVENT_GIVE_UP_SECONDS,
@@ -13,6 +16,7 @@ import {
 } from "./webhookEvents";
 import { Activity, Athlete, StoredActivity } from "./challenge-models";
 import { StravaWebhookEvent } from "./strava";
+import { toStoredActivity } from "./activityLogic";
 
 function httpError(status: number): AxiosError {
   const headers = new AxiosHeaders();
@@ -247,4 +251,187 @@ test("a queued event still failing near the end of the retry window is given up 
 
   assert.deepEqual(calls.deleted, ["q1"]);
   assert.match(calls.reported[0], /Giving up .* after 31 attempts/);
+});
+
+const WINDOW = { afterUnix: 0, beforeUnix: 2_000_000_000 };
+
+// fakeDeps plus a list call returning `live`, recording each call.
+function fakeRecheckDeps(live: Activity[], overrides: Partial<RecheckDeps> = {}) {
+  const { deps, changes } = fakeDeps(overrides);
+  const listed: string[] = [];
+  const recheckDeps: RecheckDeps = {
+    ...deps,
+    listActivities: async (token) => {
+      listed.push(token);
+      return live;
+    },
+    ...overrides,
+  };
+  return { deps: recheckDeps, changes, listed };
+}
+
+test("recheckAthleteActivities adds missed activities, updates edited ones and deletes ones Strava no longer has", async () => {
+  const unchanged = toStoredActivity(activity({ id: 1 }), "7", 100);
+  const cropped = toStoredActivity(activity({ id: 2, distance: 5105.5 }), "7", 100);
+  const gone = toStoredActivity(activity({ id: 3 }), "7", 100);
+  const { deps, changes, listed } = fakeRecheckDeps([activity({ id: 1 }), activity({ id: 2, distance: 1474.7 }), activity({ id: 4 })], {
+    getActivity: async () => {
+      throw httpError(404);
+    },
+  });
+
+  const result = await recheckAthleteActivities(ATHLETE, [unchanged, cropped, gone], WINDOW, deps, 999);
+
+  assert.deepEqual(result, { changes: ["updated 2", "added 4", "deleted 3"], tokenRejected: false });
+  assert.equal(listed.length, 1);
+  assert.deepEqual(
+    changes.upserted.map((a) => [a.id, a.lastEventTime]),
+    [
+      [2, 999],
+      [4, 999],
+    ],
+  );
+  assert.deepEqual(changes.deleted, [3]);
+});
+
+test("recheckAthleteActivities keeps an activity missing from the list that Strava still has (e.g. its start was moved)", async () => {
+  const moved = toStoredActivity(activity({ id: 5, start_date: "2027-10-05T06:00:00Z" }), "7", 100);
+  const { deps, changes } = fakeRecheckDeps([], { getActivity: async () => activity({ id: 5, start_date: "2027-10-01T06:00:00Z" }) });
+
+  const result = await recheckAthleteActivities(ATHLETE, [moved], WINDOW, deps, 999);
+
+  assert.deepEqual(result.changes, ["updated 5"]);
+  assert.deepEqual(changes.deleted, []);
+  assert.equal(changes.upserted[0].start_date, "2027-10-01T06:00:00Z");
+});
+
+test("recheckAthleteActivities leaves an unchanged activity missing from the list alone (e.g. past the 50-per-page cap)", async () => {
+  const stored = toStoredActivity(activity({ id: 6 }), "7", 100);
+  const { deps, changes } = fakeRecheckDeps([], { getActivity: async () => activity({ id: 6 }) });
+
+  assert.deepEqual((await recheckAthleteActivities(ATHLETE, [stored], WINDOW, deps, 999)).changes, []);
+  assert.deepEqual(changes, { upserted: [], deleted: [], removed: [] });
+});
+
+test("recheckAthleteActivities reports a rejected token and changes nothing", async () => {
+  const { deps, changes } = fakeRecheckDeps([], {
+    refreshAccessToken: async () => {
+      throw httpError(401);
+    },
+  });
+
+  assert.deepEqual(await recheckAthleteActivities(ATHLETE, [toStoredActivity(activity(), "7", 100)], WINDOW, deps, 999), {
+    changes: [],
+    tokenRejected: true,
+  });
+  assert.deepEqual(changes, { upserted: [], deleted: [], removed: [] });
+});
+
+function athleteNamed(id: string): Athlete {
+  return { ...ATHLETE, id, lastname: id };
+}
+
+test("recheckRecentActivityOwners checks each athlete with stored activities once, skipping unregistered ones", async () => {
+  const refreshed: string[] = [];
+  const { deps } = fakeRecheckDeps([], {
+    getAthlete: async (id) => (id === "gone" ? null : athleteNamed(id)),
+    refreshAccessToken: async (athlete) => {
+      refreshed.push(athlete.id);
+      return "access";
+    },
+    listActivities: async () => [],
+  });
+  const stored = [
+    toStoredActivity(activity({ id: 1 }), "a", 0),
+    toStoredActivity(activity({ id: 2 }), "a", 0),
+    toStoredActivity(activity({ id: 3 }), "gone", 0),
+  ];
+
+  await recheckRecentActivityOwners(stored, WINDOW, deps, 999);
+
+  assert.deepEqual(refreshed, ["a"]);
+});
+
+test("recheckRecentActivityOwners lists rejected tokens and failures without stopping the others", async () => {
+  const { deps } = fakeRecheckDeps([], {
+    getAthlete: async (id) => athleteNamed(id),
+    refreshAccessToken: async (athlete) => {
+      if (athlete.id === "dead") throw httpError(400);
+      if (athlete.id === "broken") throw httpError(500);
+      return "access";
+    },
+    listActivities: async () => [activity({ id: 9 })],
+  });
+  const stored = ["dead", "broken", "fine"].map((id, i) => toStoredActivity(activity({ id: i + 1 }), id, 0));
+
+  const summary = await recheckRecentActivityOwners(stored, WINDOW, deps, 999);
+
+  assert.deepEqual(summary.rejected, ["Test dead"]);
+  assert.equal(summary.failures.length, 1);
+  assert.match(summary.failures[0], /^Test broken:/);
+  assert.ok(summary.changes.includes("added 9"));
+  assert.equal(summary.rateLimited, false);
+});
+
+test("recheckRecentActivityOwners stops at Strava's rate limit", async () => {
+  const listedFor: string[] = [];
+  const { deps } = fakeRecheckDeps([], {
+    getAthlete: async (id) => athleteNamed(id),
+    refreshAccessToken: async (athlete) => athlete.id,
+    listActivities: async (token) => {
+      listedFor.push(token);
+      if (token === "a") throw httpError(429);
+      return [];
+    },
+  });
+  const stored = ["a", "b", "c"].map((id, i) => toStoredActivity(activity({ id: i + 1 }), id, 0));
+
+  const summary = await recheckRecentActivityOwners(stored, WINDOW, deps, 999, 1);
+
+  assert.equal(summary.rateLimited, true);
+  assert.deepEqual(listedFor, ["a"]);
+});
+
+test("recheckRecentActivityOwners retries once with the stored token when another writer rotated it", async () => {
+  let reads = 0;
+  const refreshedWith: string[] = [];
+  const { deps } = fakeRecheckDeps([], {
+    // The worker's read and the rejection's re-check both see the old token, until the rotation lands; after that, the new one.
+    getAthlete: async () => ({ ...ATHLETE, refreshToken: reads++ < 1 ? "old" : "new" }),
+    refreshAccessToken: async (athlete) => {
+      refreshedWith.push(athlete.refreshToken);
+      if (athlete.refreshToken === "old") throw httpError(400);
+      return "access";
+    },
+    listActivities: async () => [activity()],
+  });
+
+  const summary = await recheckRecentActivityOwners([toStoredActivity(activity(), "7", 0)], WINDOW, deps, 999);
+
+  assert.deepEqual(refreshedWith, ["old", "new"]);
+  assert.deepEqual(summary, { changes: [], rejected: [], failures: [], rateLimited: false });
+});
+
+test("recheckRecentActivityOwners records an athlete lookup that fails, and still checks the others", async () => {
+  const checked: string[] = [];
+  const { deps } = fakeRecheckDeps([], {
+    getAthlete: async (id) => {
+      if (id === "flaky") throw new Error("Firestore unavailable");
+      return athleteNamed(id);
+    },
+    refreshAccessToken: async (athlete) => {
+      checked.push(athlete.id);
+      return "access";
+    },
+    listActivities: async () => [],
+    getActivity: async () => {
+      throw httpError(404);
+    },
+  });
+  const stored = ["flaky", "fine"].map((id, i) => toStoredActivity(activity({ id: i + 1 }), id, 0));
+
+  const summary = await recheckRecentActivityOwners(stored, WINDOW, deps, 999);
+
+  assert.deepEqual(checked, ["fine"]);
+  assert.deepEqual(summary.failures, ["flaky: Firestore unavailable"]);
 });

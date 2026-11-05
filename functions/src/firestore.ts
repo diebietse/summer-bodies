@@ -214,7 +214,7 @@ export class Firestore {
   }
 
   // Everything below supports the Strava-webhook-fed activity store (see activityStore.ts), which replaces
-  // the daily poll of every athlete's Strava activities - see Bot.publishDailyUpdates. A flat top-level
+  // the daily poll of every athlete's week of Strava activities - see Bot.publishDailyUpdates. A flat top-level
   // collection (not a subcollection per athlete): Strava activity ids are globally unique, and
   // Challenge.calculateResults needs every registered athlete's activities in one date range on every run -
   // a single flat range query beats N per-athlete subcollection queries for that.
@@ -241,11 +241,18 @@ export class Firestore {
   // Scoped to the claimed owner: webhook events aren't signed/authenticated (see webhookEvents.ts),
   // so without this check, a spoofed owner_id/object_id pair could delete any other athlete's stored
   // activity. A mismatch (or a doc that's already gone) is treated as a no-op, not an error.
-  static async deleteActivity(activityId: number, athleteId: string): Promise<void> {
+  // `eventTime` is when the caller learned the activity is gone: a write newer than that (e.g. a webhook storing it
+  // again after it was made public) wins, like upsertActivity's guard - checked in a transaction for the same reason.
+  static async deleteActivity(activityId: number, athleteId: string, eventTime?: number): Promise<void> {
     const ref = db.collection("activities").doc(activityId.toString());
-    const doc = await ref.get();
-    if (!doc.exists || (doc.data() as StoredActivity).athleteId !== athleteId) return;
-    await ref.delete();
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(ref);
+      if (!doc.exists) return;
+      const stored = doc.data() as StoredActivity;
+      if (stored.athleteId !== athleteId) return;
+      if (eventTime !== undefined && shouldSkipStaleWrite(stored.lastEventTime, eventTime)) return;
+      transaction.delete(ref);
+    });
   }
 
   // Unscoped (unlike deleteActivity above): only for ids a fresh live poll proved are gone - see

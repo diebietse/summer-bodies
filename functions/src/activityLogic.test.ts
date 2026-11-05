@@ -15,6 +15,8 @@ import {
   webhookVerificationResponse,
   isLivenessCheckTime,
   missedStoredActivities,
+  storedActivityChanged,
+  changedStoredActivities,
 } from "./activityLogic";
 import { Athlete, AthleteWithActivities, StoredActivity, Activity } from "./challenge-models";
 import { StravaWebhookEvent } from "./strava";
@@ -272,4 +274,27 @@ test("missedStoredActivities lists the polled activities the store doesn't have"
   const missed = missedStoredActivities([stored({ id: 1, athleteId: "1" })], [polled("1", [1, 2])]);
 
   assert.deepEqual(missed, [{ athleteName: "Test 1", activityId: 2, startDate: "2026-10-05T06:00:00Z" }]);
+});
+
+test("storedActivityChanged spots an edit to any stored field, and nothing else", () => {
+  const live = activity({ id: 5, distance: 1474.7, elapsed_time: 3750 });
+  const storedCopy = toStoredActivity(live, "1", 100);
+
+  assert.equal(storedActivityChanged(storedCopy, live), false);
+  assert.equal(storedActivityChanged(storedCopy, { ...live, distance: 5105.5 }), true);
+  assert.equal(storedActivityChanged(storedCopy, { ...live, sport_type: "Tennis" }), true);
+});
+
+test("storedActivityChanged treats a copy stored with extra fields (older code kept the whole activity) as changed", () => {
+  const live = activity({ id: 5 });
+  const bloated = { ...toStoredActivity(live, "1", 100), map: { polyline: "abc" } } as StoredActivity;
+
+  assert.equal(storedActivityChanged(bloated, live), true);
+});
+
+test("changedStoredActivities lists polled activities whose stored copy is out of date", () => {
+  const storedActivities = [toStoredActivity(activity({ id: 1 }), "1", 0), toStoredActivity(activity({ id: 2, distance: 5000 }), "1", 0)];
+  const polledAthlete = { ...athlete("1"), activities: [activity({ id: 1 }), activity({ id: 2, distance: 1500 }), activity({ id: 3 })] };
+
+  assert.deepEqual(changedStoredActivities(storedActivities, [polledAthlete]), [2]);
 });

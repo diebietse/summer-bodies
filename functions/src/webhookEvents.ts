@@ -8,7 +8,7 @@
 import { isAxiosError } from "axios";
 import { Activity, Athlete, StoredActivity } from "./challenge-models";
 import { StravaWebhookEvent } from "./strava";
-import { isDeauthorizationEvent, toStoredActivity } from "./activityLogic";
+import { isDeauthorizationEvent, storedActivityChanged, toStoredActivity } from "./activityLogic";
 
 export interface WebhookDeps {
   getAthlete(athleteId: string): Promise<Athlete | null>;
@@ -16,7 +16,8 @@ export interface WebhookDeps {
   refreshAccessToken(athlete: Athlete): Promise<string>;
   getActivity(accessToken: string, activityId: number): Promise<Activity & { athlete?: { id: number } }>;
   upsertActivity(activity: StoredActivity): Promise<void>;
-  deleteActivity(activityId: number, athleteId: string): Promise<void>;
+  // Skipped if a write newer than `eventTime` landed meanwhile - see Firestore.deleteActivity.
+  deleteActivity(activityId: number, athleteId: string, eventTime?: number): Promise<void>;
   removeAthlete(athleteId: string): Promise<void>;
 }
 
@@ -28,14 +29,17 @@ function hasStatus(error: unknown, ...statuses: number[]): boolean {
 // it's used, and another writer (a concurrent event for the same athlete, or the weekly poll, which saves its rotated
 // tokens only when it finishes) may have just used ours - so a rejection only counts once the stored token is
 // unchanged. If it changed, this throws, to be retried with the new one.
+export class TokenRotatedError extends Error {}
+
 async function refreshOrRejected(athlete: Athlete, deps: WebhookDeps): Promise<string | null> {
   try {
     return await deps.refreshAccessToken(athlete);
   } catch (error) {
     if (!hasStatus(error, 400, 401)) throw error;
     const stored = await deps.getAthlete(athlete.id);
-    if (stored && stored.refreshToken !== athlete.refreshToken)
-      throw new Error(`Athlete ${athlete.id}'s refresh token was rotated meanwhile - retrying`);
+    if (stored && stored.refreshToken !== athlete.refreshToken) {
+      throw new TokenRotatedError(`Athlete ${athlete.id}'s refresh token was rotated meanwhile - retrying`);
+    }
     return null;
   }
 }
@@ -72,9 +76,110 @@ export async function processWebhookEvent(event: StravaWebhookEvent, deps: Webho
   } catch (error) {
     // Gone, or no longer visible to us (e.g. made "Only You") - what a live poll would show as well.
     if (!hasStatus(error, 403, 404)) throw error;
-    await deps.deleteActivity(event.object_id, athleteId);
+    await deps.deleteActivity(event.object_id, athleteId, event.event_time);
     return `deleted activity ${event.object_id}: Strava no longer shows it`;
   }
+}
+
+export interface RecheckDeps extends WebhookDeps {
+  // The athlete's activities started in [afterUnix, beforeUnix) - one list call (see Strava.getAthleteActivities).
+  listActivities(accessToken: string, afterUnix: number, beforeUnix: number): Promise<Activity[]>;
+}
+
+// Fixes what the webhooks didn't report about an athlete's recent activities - edits Strava sends no event for (only
+// title, type and privacy changes send one, not a crop, a re-sync or a sport type change), and any missed create or
+// delete: one list call for the window, then adds what isn't stored, updates what changed and deletes what Strava no
+// longer shows (confirmed by id). `tokenRejected` when their token no longer works. Throws, like processWebhookEvent, on anything worth
+// trying again.
+export async function recheckAthleteActivities(
+  athlete: Athlete,
+  stored: StoredActivity[],
+  window: { afterUnix: number; beforeUnix: number },
+  deps: RecheckDeps,
+  eventTime: number,
+): Promise<{ changes: string[]; tokenRejected: boolean }> {
+  const accessToken = await refreshOrRejected(athlete, deps);
+  if (accessToken === null) return { changes: [], tokenRejected: true };
+  const live = await deps.listActivities(accessToken, window.afterUnix, window.beforeUnix);
+  const storedById = new Map(stored.map((activity) => [activity.id, activity]));
+  const changes: string[] = [];
+  for (const activity of live) {
+    const storedCopy = storedById.get(activity.id);
+    if (storedCopy && !storedActivityChanged(storedCopy, activity)) continue;
+    await deps.upsertActivity(toStoredActivity(activity, athlete.id, eventTime));
+    changes.push(`${storedCopy ? "updated" : "added"} ${activity.id}`);
+  }
+  // Missing from the list isn't proof it's gone - its start may have been moved out of the window, or the list hit its
+  // 50-activity page - so each is fetched by id and deleted only if Strava no longer shows it, like a webhook delete.
+  const liveIds = new Set(live.map((activity) => activity.id));
+  for (const activity of stored.filter((s) => !liveIds.has(s.id))) {
+    try {
+      const current = await deps.getActivity(accessToken, activity.id);
+      if (!storedActivityChanged(activity, current)) continue;
+      await deps.upsertActivity(toStoredActivity(current, athlete.id, eventTime));
+      changes.push(`updated ${activity.id}`);
+    } catch (error) {
+      if (!hasStatus(error, 403, 404)) throw error;
+      await deps.deleteActivity(activity.id, athlete.id, eventTime);
+      changes.push(`deleted ${activity.id}`);
+    }
+  }
+  return { changes, tokenRejected: false };
+}
+
+export interface RecheckSummary {
+  changes: string[];
+  // Athletes whose token Strava rejected - they need registering again (or removing).
+  rejected: string[];
+  failures: string[];
+  // Strava's rate limit was hit, so the athletes after it weren't checked.
+  rateLimited: boolean;
+}
+
+// Rechecks (see recheckAthleteActivities) every athlete with a stored activity in the window, a few at a time so the
+// calls don't all land at once, stopping at the first rate limit (429) rather than spending more of what webhook
+// events need. A token rotated meanwhile by another writer is retried once with the stored one.
+export async function recheckRecentActivityOwners(
+  stored: StoredActivity[],
+  window: { afterUnix: number; beforeUnix: number },
+  deps: RecheckDeps,
+  eventTime: number,
+  concurrency = 4,
+): Promise<RecheckSummary> {
+  const byAthlete = new Map<string, StoredActivity[]>();
+  for (const activity of stored) byAthlete.set(activity.athleteId, [...(byAthlete.get(activity.athleteId) ?? []), activity]);
+  const summary: RecheckSummary = { changes: [], rejected: [], failures: [], rateLimited: false };
+  const queue = [...byAthlete];
+
+  const recheck = async (athlete: Athlete, athleteStored: StoredActivity[]) => {
+    try {
+      return await recheckAthleteActivities(athlete, athleteStored, window, deps, eventTime);
+    } catch (error) {
+      if (!(error instanceof TokenRotatedError)) throw error;
+      const reread = await deps.getAthlete(athlete.id);
+      return reread ? recheckAthleteActivities(reread, athleteStored, window, deps, eventTime) : { changes: [], tokenRejected: false };
+    }
+  };
+
+  const worker = async () => {
+    for (let next = queue.shift(); next && !summary.rateLimited; next = queue.shift()) {
+      const [athleteId, athleteStored] = next;
+      let name = athleteId;
+      try {
+        const athlete = await deps.getAthlete(athleteId);
+        if (!athlete) continue;
+        name = `${athlete.firstname} ${athlete.lastname}`;
+        const { changes, tokenRejected } = await recheck(athlete, athleteStored);
+        summary.changes.push(...changes);
+        if (tokenRejected) summary.rejected.push(name);
+      } catch (error) {
+        if (hasStatus(error, 429)) summary.rateLimited = true;
+        else summary.failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: concurrency }, worker));
+  return summary;
 }
 
 export interface QueuedWebhookEvent {

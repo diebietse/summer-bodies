@@ -11,8 +11,8 @@
 //
 // It's also the fix if weekly results generation has stopped for everyone: a revoked or otherwise invalid
 // refresh token fails that athlete's Strava fetch, and the weekly results are all-or-nothing - see
-// functions/src/bot.ts. (The daily update reads the webhook-fed activity store, so it never touches athlete
-// tokens and doesn't notice.) In that case the revoke call below is expected to
+// functions/src/bot.ts. (During the challenge the daily update reports rejected tokens of athletes with recent
+// activities, so it may show sooner.) In that case the revoke call below is expected to
 // fail (the token's already dead) - that's fine, it's logged and the local cleanup proceeds regardless.
 
 import { parseArgs } from "node:util";

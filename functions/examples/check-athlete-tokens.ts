@@ -5,8 +5,8 @@
 // Refreshes every registered athlete's stored Strava token and reports which ones are invalid/revoked. Useful
 // after a Slack alert like "could not get all athletes' Strava activities" - a single athlete's failed refresh
 // stops the weekly results for everyone (see functions/src/bot.ts) until the bad token is found and that
-// athlete removed (see examples/remove-athlete.ts). The daily update reads the webhook-fed activity store and
-// never touches athlete tokens, so it gives no warning of this.
+// athlete removed (see examples/remove-athlete.ts). During the challenge the daily update reports rejected tokens
+// of athletes with recent activities; anyone else's only shows on Monday.
 //
 // Strava rotates the refresh token on every use, so a successful check immediately persists the newly-issued
 // token back to Firestore - otherwise this script would itself break the very tokens it just confirmed work.

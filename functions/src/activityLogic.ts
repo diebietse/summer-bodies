@@ -176,3 +176,25 @@ export function missedStoredActivities(
       .map((activity) => ({ athleteName: `${athlete.firstname} ${athlete.lastname}`, activityId: activity.id, startDate: activity.start_date })),
   );
 }
+
+// Whether an activity as Strava now has it differs from the stored copy in anything we store (see toStoredActivity).
+// Strava sends webhook updates only for title, type and privacy changes, so a crop, a re-sync or a sport type change
+// can leave the stored copy stale - see webhookEvents.recheckStoredActivities and the weekly reconciliation.
+export function storedActivityChanged(stored: StoredActivity, live: Activity): boolean {
+  const { athleteId: _athleteId, startDateUnix: _startDateUnix, lastEventTime: _lastEventTime, ...storedFields } = stored;
+  const { athleteId: _a, startDateUnix: _s, lastEventTime: _l, ...liveFields } = toStoredActivity(live, stored.athleteId, 0);
+  return JSON.stringify(storedFields, Object.keys(storedFields).sort()) !== JSON.stringify(liveFields, Object.keys(liveFields).sort());
+}
+
+// Polled activities whose stored copy is out of date - edits the webhooks didn't report.
+export function changedStoredActivities(storedActivities: StoredActivity[], polledAthletes: AthleteWithActivities[]): number[] {
+  const storedById = new Map(storedActivities.map((activity) => [activity.id, activity]));
+  return polledAthletes.flatMap((athlete) =>
+    athlete.activities
+      .filter((activity) => {
+        const stored = storedById.get(activity.id);
+        return stored !== undefined && storedActivityChanged(stored, activity);
+      })
+      .map((activity) => activity.id),
+  );
+}

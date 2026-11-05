@@ -7,7 +7,13 @@ import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
 import { currentWeekUnix, datePretty, previousWeekUnix, now, nextWeekUnix, nowPretty, todayUnix, weekDateStrings, weekLabel } from "./util";
 import { errorMessage, reportError, reportWarning } from "./errorReporting";
-import { checkWebhookLiveness, getAthletesActivitiesFromStore, sweepStuckWebhookEvents, syncActivitiesIntoStore } from "./activityStore";
+import {
+  checkWebhookLiveness,
+  getAthletesActivitiesFromStore,
+  recheckRecentActivities,
+  sweepStuckWebhookEvents,
+  syncActivitiesIntoStore,
+} from "./activityStore";
 import crypto from "crypto";
 import moment from "moment";
 import { isChallengeAward } from "./draw";
@@ -55,16 +61,18 @@ export class Bot {
     );
   }
 
-  // Reads from the webhook-fed activity store (see activityStore.ts) instead of polling every athlete's
-  // Strava activities live - that daily live poll is exactly what Strava's capacity review flagged. The
-  // weekly job (below) still polls live, once a week, and makes the store match that poll (see
-  // reconcileActivityStore).
+  // Reads from the webhook-fed activity store (see activityStore.ts) instead of polling every athlete's week of
+  // Strava activities live - that daily live poll is exactly what Strava's capacity review flagged. During the
+  // challenge it first rechecks the last two days for athletes with an activity stored in them (one list call each -
+  // see activityStore.recheckRecentActivities). The weekly job (below) still polls live, once a week, and makes the
+  // store match that poll (see reconcileActivityStore).
   static async publishDailyUpdates() {
     await this.runScheduledJob("publishDailyUpdates", async () => {
       const config = await Firestore.getConfig();
       await this.refreshBotToken(config);
       await checkWebhookLiveness(config);
       await sweepStuckWebhookEvents(config);
+      await recheckRecentActivities(config);
       const slack = new Slack(config.slackWebhookUrl, config.slackChannelDaily);
 
       const currentWeek = currentWeekUnix();
@@ -208,11 +216,15 @@ export class Bot {
     config: SummerBodiesConfig,
   ): Promise<void> {
     try {
-      const { missed, removed } = await syncActivitiesIntoStore(athletes, startUnix, endUnix);
-      if (missed.length > 0 || removed.length > 0) {
+      const { missed, changed, removed } = await syncActivitiesIntoStore(athletes, startUnix, endUnix);
+      if (missed.length > 0 || changed.length > 0 || removed.length > 0) {
         await reportWarning(
-          `Strava webhooks missed ${missed.length} new activities and ${removed.length} removals last week (now fixed in the activity store)`,
-          [...missed.map((m) => `missed: ${m.athleteName} ${m.activityId} (${m.startDate})`), ...removed.map((id) => `removed: ${id}`)].join("\n"),
+          `Strava webhooks missed ${missed.length} new activities, ${changed.length} edits and ${removed.length} removals last week (now fixed in the activity store)`,
+          [
+            ...missed.map((m) => `missed: ${m.athleteName} ${m.activityId} (${m.startDate})`),
+            ...changed.map((id) => `changed: ${id}`),
+            ...removed.map((id) => `removed: ${id}`),
+          ].join("\n"),
           config,
         );
       }

@@ -75,7 +75,7 @@ Authorize the OAuth login of the strava account you want to give access and you 
 
 ## Strava Webhook
 
-Activities reach the bot through a Strava [push subscription][strava-webhooks]: Strava posts every activity create, update and delete, and every athlete deauthorization, to `POST /strava-webhook/<secret>` ([api.ts][api]), which keeps the `activities` Firestore collection up to date. The daily update reads that collection instead of polling Strava. The weekly results still poll every athlete live, score that, and make the collection match the poll, so a missed event can't affect the weekly results.
+Activities reach the bot through a Strava [push subscription][strava-webhooks]: Strava posts every activity create, update and delete, and every athlete deauthorization, to `POST /strava-webhook/<secret>` ([api.ts][api]), which keeps the `activities` Firestore collection up to date. The daily update reads that collection instead of polling every athlete's week on Strava; during the challenge it first rechecks the last two days for the athletes with an activity stored in them (see below). The weekly results still poll every athlete live, score that, and make the collection match the poll, so a missed event can't affect the weekly results.
 
 Strava doesn't sign its events, so they're handled with care ([webhookEvents.ts][webhook-events]):
 
@@ -96,9 +96,9 @@ npm run ts ./examples/manage-strava-webhook.ts -- --create --url https://us-cent
 Strava sends no heartbeat, so the bot watches for silence itself and reports to the errors channel:
 
 - During the challenge, the daily update checks that Strava still has the configured subscription and that an event has arrived in the last 24 hours.
-- The Monday reconciliation lists every activity the webhooks missed (and every stale one it removed) before the week's results are scored.
+- The Monday reconciliation lists every activity the webhooks missed, every edit they didn't report and every stale activity it removed, before the week's results are scored.
 
-Webhooks only report changes, so a newly registered athlete's activities since the challenge started are fetched once on registration.
+Webhooks only report changes, so a newly registered athlete's activities since the challenge started are fetched once on registration. Strava also sends no event for some edits (only title, type and privacy changes send one - not a crop, a re-sync or a sport type change), so during the challenge the daily update first lists, for each athlete with an activity stored from the last two days, their activities from those two days (one Strava call each, a few athletes at a time) and fixes the store: edits, and any create or delete the webhooks missed. Athletes whose token Strava rejects are reported to the errors channel.
 
 ## Between Seasons
 
@@ -120,7 +120,7 @@ npm run ts ./examples/remove-athlete.ts -- --id 12345
 npm run ts ./examples/remove-athlete.ts -- --name "First Last"
 ```
 
-This also fixes the more common reason to need it: a revoked or otherwise invalid refresh token fails that one athlete's Strava fetch, and since a single athlete's failure fails the whole weekly batch (see `publishWeeklyResults` in [bot.ts][bot]), weekly results stop for everyone until the athlete is removed. The daily update reads the webhook-fed activity store and never touches athlete tokens, so the Monday error is the first sign; [check-athlete-tokens.ts][check-athlete-tokens] finds the broken token.
+This also fixes the more common reason to need it: a revoked or otherwise invalid refresh token fails that one athlete's Strava fetch, and since a single athlete's failure fails the whole weekly batch (see `publishWeeklyResults` in [bot.ts][bot]), weekly results stop for everyone until the athlete is removed. During the challenge the daily update's recheck reports a rejected token for athletes with recent activities; otherwise the Monday error is the first sign. [check-athlete-tokens.ts][check-athlete-tokens] finds the broken token.
 
 ## Re-running a Failed Job
 

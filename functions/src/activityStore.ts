@@ -2,12 +2,13 @@ import { Athlete, AthleteWithActivities, StoredActivity } from "./challenge-mode
 import { Firestore, SummerBodiesConfig } from "./firestore";
 import { Strava } from "./strava";
 import { now } from "./util";
-import { handleQueuedWebhookEvent, processWebhookEvent } from "./webhookEvents";
+import { handleQueuedWebhookEvent, processWebhookEvent, recheckRecentActivityOwners } from "./webhookEvents";
 import { reportError, reportWarning } from "./errorReporting";
 import {
   isLivenessCheckTime,
   mergeIntoAthletesWithActivities,
   missedStoredActivities,
+  changedStoredActivities,
   staleStoredActivityIds,
   toStoredActivity,
   webhookLivenessProblems,
@@ -63,6 +64,8 @@ export interface ReconciliationResult {
   missed: MissedActivity[];
   // Ids of stored activities the poll proved are gone (see activityLogic.staleStoredActivityIds), now deleted.
   removed: number[];
+  // Ids of stored activities whose data the poll showed had changed - edits the webhooks didn't report.
+  changed: number[];
 }
 
 // Makes the store match a fresh live poll of [startUnixTime, endUnixTime): upserts every polled activity and
@@ -81,6 +84,7 @@ export async function syncActivitiesIntoStore(
 ): Promise<ReconciliationResult> {
   const storedActivities = await Firestore.getActivitiesInRange(startUnixTime, endUnixTime);
   const missed = missedStoredActivities(storedActivities, athletesWithActivities);
+  const changed = changedStoredActivities(storedActivities, athletesWithActivities);
   const eventTime = now();
   const upserts = athletesWithActivities.flatMap((athlete) =>
     athlete.activities.map((activity) => Firestore.upsertActivity(toStoredActivity(activity, athlete.id, eventTime))),
@@ -88,7 +92,7 @@ export async function syncActivitiesIntoStore(
 
   const removed = staleStoredActivityIds(storedActivities, athletesWithActivities);
   await Promise.all([...upserts, Firestore.deleteActivities(removed)]);
-  return { missed, removed };
+  return { missed, removed, changed };
 }
 
 // Handles one queued webhook event - see webhookEvents.handleQueuedWebhookEvent.
@@ -128,7 +132,7 @@ function webhookDeps(config: SummerBodiesConfig) {
     refreshAccessToken: (athlete: Athlete) => refreshAndPersistAthleteToken(config.stravaClientId, config.stravaClientSecret, athlete),
     getActivity: (accessToken: string, activityId: number) => strava.getActivity(accessToken, activityId),
     upsertActivity: (activity: StoredActivity) => Firestore.upsertActivity(activity),
-    deleteActivity: (activityId: number, athleteId: string) => Firestore.deleteActivity(activityId, athleteId),
+    deleteActivity: (activityId: number, athleteId: string, eventTime?: number) => Firestore.deleteActivity(activityId, athleteId, eventTime),
     removeAthlete: (athleteId: string) => Firestore.removeAthlete(athleteId, config.challengeStartDate),
   };
 }
@@ -153,5 +157,37 @@ export async function checkWebhookLiveness(config: SummerBodiesConfig): Promise<
     if (problems.length > 0) await reportWarning("Strava webhooks may not be arriving", problems.join("\n"), config);
   } catch (error) {
     await reportError("Couldn't check whether Strava webhooks are arriving", error, config);
+  }
+}
+
+// What the webhooks didn't report - edits Strava sends no event for, which are usually made soon after upload, and any
+// missed create or delete - is fixed each day for the activities started in the last two days, before the daily update
+// reads the store: one list call per athlete with an activity stored in that window (see
+// webhookEvents.recheckRecentActivityOwners). Only during the challenge (see isLivenessCheckTime), to keep Strava calls
+// down otherwise. Only reports; never throws.
+export async function recheckRecentActivities(config: SummerBodiesConfig): Promise<void> {
+  const timeNow = now();
+  if (!isLivenessCheckTime(timeNow, config.challengeStartDate, config.challengeEndDate)) return;
+  try {
+    const window = { afterUnix: timeNow - 2 * 24 * 60 * 60, beforeUnix: timeNow };
+    const strava = new Strava(config.stravaClientId, config.stravaClientSecret);
+    const summary = await recheckRecentActivityOwners(
+      await Firestore.getActivitiesInRange(window.afterUnix, window.beforeUnix),
+      window,
+      {
+        ...webhookDeps(config),
+        listActivities: (accessToken, afterUnix, beforeUnix) => strava.getAthleteActivities(accessToken, afterUnix, beforeUnix),
+      },
+      timeNow,
+    );
+    console.log(`Rechecked recent activities: ${summary.changes.join(", ") || "no changes"}`);
+    const problems = [
+      ...summary.rejected.map((name) => `${name}: Strava rejected their token - they need to register again (or be removed)`),
+      ...summary.failures,
+      ...(summary.rateLimited ? ["Hit Strava's rate limit - the remaining athletes weren't checked"] : []),
+    ];
+    if (problems.length > 0) await reportWarning("Problems rechecking recent Strava activities", problems.join("\n"), config);
+  } catch (error) {
+    await reportError("Couldn't recheck recent Strava activities", error, config);
   }
 }
