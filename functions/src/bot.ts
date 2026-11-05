@@ -6,7 +6,7 @@ import { Challenge, IgnoredDuplicate } from "./challenge";
 import { Puppeteer } from "./puppeteer";
 import { uploadPngToStorage } from "./firebase-storage";
 import { currentWeekUnix, datePretty, previousWeekUnix, now, nextWeekUnix, nowPretty, todayUnix, weekDateStrings, weekLabel } from "./util";
-import { errorMessage, reportError, reportWarning } from "./errorReporting";
+import { reportError, reportWarning } from "./errorReporting";
 import {
   checkWebhookLiveness,
   getAthletesActivitiesFromStore,
@@ -32,21 +32,6 @@ export class Bot {
     }
   }
 
-  // The bot has its own Strava account (distinct from any athlete's), whose refresh token lives in
-  // config.stravaRefreshToken and is refreshed here once per day. If it's invalid/expired, Strava's raw error
-  // (e.g. `{"resource":"RefreshToken","field":"refresh_token","code":"invalid"}`) doesn't say *whose* token
-  // that is - wrap it so the resulting Slack alert says exactly what's broken and how to fix it.
-  private static async refreshBotToken(config: SummerBodiesConfig): Promise<void> {
-    try {
-      const newToken = await Strava.getToken(config.stravaClientId, config.stravaClientSecret, config.stravaRefreshToken);
-      await Firestore.updateRefreshToken(newToken.refresh_token);
-    } catch (error) {
-      throw new Error(
-        `The bot's own Strava account refresh token is invalid/expired - re-authorize it via examples/create-strava-token.ts, then save the new token to config.stravaRefreshToken. Underlying error: ${errorMessage(error)}`,
-      );
-    }
-  }
-
   // Deliberately not posted to the athlete-facing daily/weekly channels - this is an operational problem for
   // whoever's running the bot to fix, not something athletes need to see or can do anything about.
   private static async reportFailedActivitiesFetch(
@@ -69,7 +54,6 @@ export class Bot {
   static async publishDailyUpdates() {
     await this.runScheduledJob("publishDailyUpdates", async () => {
       const config = await Firestore.getConfig();
-      await this.refreshBotToken(config);
       await checkWebhookLiveness(config);
       await sweepStuckWebhookEvents(config);
       await recheckRecentActivities(config);

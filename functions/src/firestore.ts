@@ -51,10 +51,6 @@ export class Firestore {
     await configRef.update(fields);
   }
 
-  static async updateRefreshToken(stravaRefreshToken: string) {
-    await configRef.update({ stravaRefreshToken });
-  }
-
   // Merged into the stored config rather than replacing it, so uploading example-config.json keeps the fields it
   // doesn't list - above all the Strava webhook's (set by manage-strava-webhook.ts), without which every webhook event
   // would be turned away. To remove a field, delete it in the Firestore console.
@@ -350,9 +346,7 @@ export interface SummerBodiesConfig {
   // Where unexpected backend errors get reported - see errorReporting.ts. Optional so existing deployments
   // without it don't break; error reporting is just skipped if unset.
   slackChannelErrors?: string;
-  stravaBotId: string;
   stravaClientId: string;
-  stravaRefreshToken: string;
   stravaClientSecret: string;
   // All three set by examples/manage-strava-webhook.ts --create - see the webhook routes in api.ts.
   // Checked against the hub.verify_token Strava sends during the push-subscription validation handshake.

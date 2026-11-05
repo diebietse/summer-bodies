@@ -39,10 +39,8 @@ Log at least 1km of an On Foot activity (Run/Walk/Hike) on consecutive days betw
 | ------------------ | ---------------------------------------------------------------- |
 | slackWebhookUrl    | Set the [Slack Webhook][slack-webhooks] URL to post messages to. |
 | slackChannelErrors | Optional - Slack channel unexpected backend errors are posted to |
-| stravaBotId        | Name of the Strava bot account                                   |
-| stravaClientId     | Strava OAuth ID of the bot account                               |
-| stravaRefreshToken | Strava OAuth refresh token of the bot account                    |
-| stravaClientSecret | Strava OAuth client secret token of the bot account              |
+| stravaClientId     | Client ID of the Strava API application                          |
+| stravaClientSecret | Client secret of the Strava API application                      |
 | challengeStartDate | Inclusive SAST start date (`YYYY-MM-DD`) of the streak challenge |
 | challengeEndDate   | Inclusive SAST end date (`YYYY-MM-DD`) of the streak challenge   |
 
@@ -54,24 +52,13 @@ An example config upload is provided in [upload-config.ts][upload-config].
 
 The website's app name and logo are white-labeled at runtime from Firestore, not baked into the build — see [website's README][website-readme] and [upload-branding.ts][upload-branding].
 
-### Strava OAuth Refresh Token
+### Strava API Application
 
-To use the Strava API you will need an Oauth refresh token, to get that you will first need to create an [API application][strava-dev], you can then get your client ID and secret from the [strava api settings page][strava-api-settings]
+The bot needs a Strava [API application][strava-dev]: its client ID and secret, from the [Strava API settings page][strava-api-settings], go in `stravaClientId` and `stravaClientSecret`. Athletes authorize it when they register on the website (scope `activity:read`); the bot has no Strava account of its own.
 
 > **Note:** Strava no longer allows free accounts to create API applications. You need a paid Strava subscription on the account used to register the application before you can get a client ID and secret.
 
-The scope of the Strava OAuth token must be set to `read,activity:read,activity:write`.
-`activity:write` was for a weekly placeholder event the bot no longer creates - nothing writes to Strava any more.
-
 More details on [Strava authentication][strava-oauth] can be found on their website.
-
-You can get a refresh token with the correct scope by running the [create-strava-token.ts][create-strava-token] script:
-
-```console
-npm run ts ./examples/create-strava-token.ts -- --clientId <your-client-id> --clientSecret <your-client-secret>
-```
-
-Authorize the OAuth login of the strava account you want to give access and you will get the refresh token
 
 ## Strava Webhook
 
@@ -191,7 +178,6 @@ The website runs on the latest Node LTS (`website/.nvmrc`). The functions run on
 [lucky-draw]: website/public/lucky-draw.html
 [bot]: functions/src/bot.ts
 [website-readme]: website/README.md
-[create-strava-token]: functions/examples/create-strava-token.ts
 [strava-dev]: https://developers.strava.com/docs/getting-started/#account
 [license-badge]: https://img.shields.io/badge/license-MIT-000000.svg
 [license-link]: https://github.com/diebietse/summer-bodies/blob/main/LICENSE
