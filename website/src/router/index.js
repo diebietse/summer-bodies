@@ -15,6 +15,11 @@ const routes = [
     component: Callback,
   },
   {
+    path: "/privacy",
+    name: "Privacy",
+    component: () => import("../views/Privacy.vue"),
+  },
+  {
     path: "/results/:id",
     name: "Results",
     component: Results,

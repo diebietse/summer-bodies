@@ -1,5 +1,11 @@
 <template>
   <router-view />
+  <!-- Strava's API Policy wants privacy and support details easy to reach from everywhere Strava data shows. Not on
+       Home, whose consent note links there already, nor in screenshot mode: those pages are only rendered for the
+       Slack bot's screenshots (functions/src/puppeteer.ts). -->
+  <footer v-if="!$route.query.screenshot && !['Home', 'Privacy'].includes($route.name)" class="site-footer">
+    <router-link to="/privacy">Privacy &amp; support</router-link>
+  </footer>
 </template>
 
 <style>
@@ -18,6 +24,15 @@
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
+}
+
+.site-footer {
+  padding: 16px;
+  font-size: 0.85em;
+}
+
+.site-footer a {
+  color: #666;
 }
 
 #nav {

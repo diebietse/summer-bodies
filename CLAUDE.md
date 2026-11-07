@@ -1,6 +1,10 @@
 # summer-bodies
 
-Firebase Functions + Vue 3 app running a Strava-based team fitness challenge ("EnterAktive Challenge").
+Firebase Functions + Vue 3 app running a Strava-based team fitness challenge.
+
+This repo is public and generic: keep anything specific to one deployment (organization, people, Slack channels,
+Strava app ids) out of it - that lives in Firestore config/branding, and notes about it in the gitignored
+`CLAUDE.local.md`.
 Two independent packages: `functions/` (Cloud Functions, TypeScript) and `website/` (Vite + Vue 3).
 
 ## Before committing

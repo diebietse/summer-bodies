@@ -49,13 +49,26 @@ npm run ts ./examples/upload-branding.ts -- --appName "My Challenge" --logo ./my
 Firebase Storage and stores the app name and asset URLs in Firestore for
 your project.
 
+The same script sets what the privacy page (`/privacy`, linked from the
+Home page's consent note and every other page's footer) says about who runs the challenge:
+
+```bash
+npm run ts ./examples/upload-branding.ts -- --organizer "The Fitness Club" --contactEmail challenge@example.com --resultsSharedIn "our team's Slack workspace"
+```
+
+Once branding exists, each option can be given on its own and the rest keep
+their stored values. The contact email is baked in encoded and only shown when
+a visitor clicks to reveal it, so address harvesters don't find it - still,
+prefer a disposable alias over a personal address.
+
 `npm run build` (`scripts/fetch-branding.mjs`) reads that branding at
 **build time** — not in the browser — straight from Firestore with the root
 `service-account.json` (through `functions/examples/export-branding.ts`, so
 `functions/` needs its dependencies installed), and applies it only for that
 build:
 
-- Writes `VITE_APP_NAME` into a temporary `.env.local`
+- Writes `VITE_APP_NAME` (and the privacy page's `VITE_ORGANIZER`,
+  `VITE_CONTACT_EMAIL_ENCODED`, `VITE_RESULTS_SHARED_IN`) into a temporary `.env.local`
 - Downloads the logo over `src/assets/logo.svg`, and the favicon (if set)
   over `public/favicon.ico`
 - Runs `vite build`

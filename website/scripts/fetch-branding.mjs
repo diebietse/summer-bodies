@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Reads branding (app name + logo + optional favicon) from Firestore, with the project's service account (see
-// functions/examples/export-branding.ts), and applies it for this build only - restoring the generic defaults
-// afterward regardless of whether the build succeeds, same safety guarantee the old local-overlay deploy script
-// had, just sourced from Firestore instead of a manual folder. This has to run *before* `vite build`, not in the
-// browser, so the static <title>/logo/favicon baked into the shipped HTML are correct for link unfurlers (Slack,
-// WhatsApp, etc.), which don't run JavaScript.
+// Reads branding (app name + logo + optional favicon + the privacy page's organizer/contact) from Firestore, with
+// the project's service account (see functions/examples/export-branding.ts), and applies it for this build only -
+// restoring the generic defaults afterward regardless of whether the build succeeds, same safety guarantee the old
+// local-overlay deploy script had, just sourced from Firestore instead of a manual folder. This has to run *before*
+// `vite build`, not in the browser, so the static <title>/logo/favicon baked into the shipped HTML are correct for
+// link unfurlers (Slack, WhatsApp, etc.), which don't run JavaScript.
 //
 // Without service-account.json (CI, or a fresh clone) it builds with the generic defaults - except with
 // --require-branding, which `npm run deploy` passes, so a deploy can never silently ship them.
@@ -23,6 +23,19 @@ const ENV_LOCAL_BACKUP = `${ENV_LOCAL_PATH}.build-backup`;
 const FUNCTIONS_DIR = path.join(WEBSITE_DIR, "../functions");
 const SERVICE_ACCOUNT_PATH = path.join(WEBSITE_DIR, "../service-account.json");
 const REQUIRE_BRANDING = process.argv.includes("--require-branding");
+// Branding fields baked in as Vite env vars - read by src/config.js.
+const ENV_VARS = {
+  appName: "VITE_APP_NAME",
+  organizer: "VITE_ORGANIZER",
+  contactEmail: "VITE_CONTACT_EMAIL_ENCODED",
+  resultsSharedIn: "VITE_RESULTS_SHARED_IN",
+};
+
+// The contact email ships base64-encoded and reversed, so it never appears as plain text in the built HTML/JS for
+// address harvesters to grep - src/config.js decodes it when a visitor clicks to reveal it.
+function encodeEmail(email) {
+  return Buffer.from(email).toString("base64").split("").reverse().join("");
+}
 
 function isGitClean(filePath) {
   try {
@@ -63,9 +76,10 @@ async function downloadBinary(url) {
 // `updatedPaths` as it's written, so the caller knows what needs restoring afterward.
 async function applyBranding(branding, assets, updatedPaths) {
   try {
-    if (branding.appName) {
-      writeFileSync(ENV_LOCAL_PATH, `VITE_APP_NAME="${branding.appName}"\n`);
-    }
+    const env = Object.entries(ENV_VARS)
+      .filter(([field]) => branding[field])
+      .map(([field, name]) => `${name}=${JSON.stringify(field === "contactEmail" ? encodeEmail(branding[field]) : branding[field])}\n`);
+    if (env.length > 0) writeFileSync(ENV_LOCAL_PATH, env.join(""));
 
     const downloads = await Promise.all(assets.map((asset) => downloadBinary(asset.url)));
     assets.forEach((asset, i) => {
@@ -73,7 +87,7 @@ async function applyBranding(branding, assets, updatedPaths) {
       updatedPaths.add(asset.path);
     });
 
-    console.log(`Building with branding: appName=${branding.appName ?? "(default)"}, logo=${branding.logoUrl ? "custom" : "(default)"}, favicon=${branding.faviconUrl ? "custom" : "(default)"}`);
+    console.log(`Building with branding: appName=${branding.appName ?? "(default)"}, contactEmail=${branding.contactEmail ? "set" : "(none)"}, logo=${branding.logoUrl ? "custom" : "(default)"}, favicon=${branding.faviconUrl ? "custom" : "(default)"}`);
   } catch (error) {
     console.warn(`Could not fully apply branding, building with generic defaults instead: ${error.message}`);
   }
@@ -98,7 +112,7 @@ async function main() {
     process.exit(1);
   }
 
-  if (!branding?.appName && !branding?.logoUrl && !branding?.faviconUrl) {
+  if (!Object.keys(ENV_VARS).some((field) => branding?.[field]) && !branding?.logoUrl && !branding?.faviconUrl) {
     console.log("No branding configured, building with generic defaults.");
     buildVite();
     return;

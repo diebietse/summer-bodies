@@ -7,3 +7,6 @@
 firebase-debug.log
 
 /results/
+
+# Personal Claude Code notes for one deployment - see CLAUDE.md
+CLAUDE.local.md

@@ -366,4 +366,9 @@ export interface Branding {
   appName: string;
   logoUrl: string;
   faviconUrl?: string;
+  // Shown on the website's privacy page (website/src/views/Privacy.vue): who runs the challenge, how to reach
+  // them, and where else results are posted besides the results pages (e.g. "our team's Slack workspace").
+  organizer?: string;
+  contactEmail?: string;
+  resultsSharedIn?: string;
 }

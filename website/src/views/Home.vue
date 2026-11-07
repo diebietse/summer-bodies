@@ -12,12 +12,16 @@
     <!-- Image from https://developers.strava.com/guidelines/ -->
     <img type="button" @click="startStravaAuth" alt="Connect with Strava" src="../assets/strava_login.svg" />
 
-    <p class="consent-note">By connecting, your name and activity stats (distance, duration, elevation) will be visible to other registered participants on the results pages and leaderboards.</p>
+    <p class="consent-note">
+      By connecting, you let us read your Strava name and activities (title, type, date, distance, time and elevation) through Strava's API, to run the challenge. Your name and activity totals will be visible to the other participants on the results pages (private links, shared with participants
+      only)<template v-if="resultsSharedIn"> and in {{ resultsSharedIn }}</template
+      >. Disconnect at any time in your Strava settings and your connection and activities are deleted - see <router-link to="/privacy">Privacy &amp; support</router-link>.
+    </p>
   </div>
 </template>
 
 <script>
-import { APP_NAME } from "../config";
+import { APP_NAME, RESULTS_SHARED_IN } from "../config";
 import { startStravaAuth } from "../stravaAuth";
 
 export default {
@@ -26,6 +30,7 @@ export default {
   data() {
     return {
       appName: APP_NAME,
+      resultsSharedIn: RESULTS_SHARED_IN,
     };
   },
   methods: {
