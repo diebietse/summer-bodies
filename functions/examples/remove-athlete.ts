@@ -4,7 +4,7 @@
 // Requires:
 // * A service-account.json file with a firestore service account in the project root directory
 //
-// Revokes the athlete's authorization on Strava's side, then deletes their registration (profile + stored
+// Revokes the athlete's authorization on Strava's side, then deletes their registration (name + stored
 // refresh token), stored activities, and current-challenge streak doc. Use this to honor a deauthorization/
 // data-deletion request, per the Strava API Agreement's termination clause (https://www.strava.com/legal/api)
 // - deleting only our own copy of their data (without revoking) would leave Strava still counting this

@@ -181,7 +181,6 @@ export interface TokenFromCodeResponse {
     id: number;
     firstname: string;
     lastname: string;
-    profile: string;
   };
 }
 

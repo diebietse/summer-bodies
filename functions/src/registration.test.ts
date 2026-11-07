@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { registerAthlete, RegistrationDeps } from "./registration";
 import { TokenFromCodeResponse } from "./strava";
 
-const TOKEN: TokenFromCodeResponse = { refresh_token: "refresh", athlete: { id: 7, firstname: "Test", lastname: "Athlete", profile: "" } };
+const TOKEN: TokenFromCodeResponse = { refresh_token: "refresh", athlete: { id: 7, firstname: "Test", lastname: "Athlete" } };
 
 function alreadyExists(): Error {
   return Object.assign(new Error("6 ALREADY_EXISTS: Document already exists"), { code: 6 });

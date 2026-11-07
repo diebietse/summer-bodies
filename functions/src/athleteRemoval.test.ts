@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { revokeThenRemove, RemovalDeps } from "./athleteRemoval";
 import { Athlete } from "./challenge-models";
 
-const ATHLETE: Athlete = { id: "7", firstname: "Test", lastname: "Athlete", profile: "", refreshToken: "refresh" };
+const ATHLETE: Athlete = { id: "7", firstname: "Test", lastname: "Athlete", refreshToken: "refresh" };
 
 function fakeDeps(revokeFails: boolean) {
   const calls: string[] = [];

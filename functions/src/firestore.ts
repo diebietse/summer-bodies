@@ -176,7 +176,6 @@ export class Firestore {
       id: data.athlete.id.toString(),
       firstname: data.athlete.firstname,
       lastname: data.athlete.lastname,
-      profile: data.athlete.profile,
       refreshToken: data.refresh_token,
     };
     await doc.create({ ...athlete });
@@ -190,7 +189,7 @@ export class Firestore {
     await Promise.all(athletes.map((athlete) => db.collection("athletes").doc(athlete.id.toString()).update({ refreshToken: athlete.refreshToken })));
   }
 
-  // Deletes an athlete's registration (profile + refresh token), their stored activities, and, if given,
+  // Deletes an athlete's registration (name + refresh token), their stored activities, and, if given,
   // their doc in the current challenge's streak collection - see functions/examples/remove-athlete.ts. Used
   // to honor a deauthorization or data-deletion request (see the Strava API Agreement's termination clause on
   // deleting Strava Data), and doubles as the fix for a revoked/invalid refresh token, which otherwise fails

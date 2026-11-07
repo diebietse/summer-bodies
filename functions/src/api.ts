@@ -37,7 +37,6 @@ export class Api {
               id: token.athlete.id.toString(),
               firstname: token.athlete.firstname,
               lastname: token.athlete.lastname,
-              profile: token.athlete.profile,
               refreshToken: token.refresh_token,
             };
             await backfillAthleteActivities(

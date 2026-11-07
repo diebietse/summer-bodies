@@ -8,7 +8,6 @@ const activities: AthleteWithActivities[] = [
     id: "some-athlete-id",
     firstname: "John",
     lastname: "Smith",
-    profile: "",
     refreshToken: "",
     activities: [
       {
@@ -21,7 +20,6 @@ const activities: AthleteWithActivities[] = [
         name: "I cycled too much",
         start_date: "now",
         start_date_local: "now",
-        average_speed: 0.549,
       },
       {
         id: 2,
@@ -33,7 +31,6 @@ const activities: AthleteWithActivities[] = [
         name: "I cycled too much",
         start_date: "now",
         start_date_local: "now",
-        average_speed: 0.549,
       },
     ],
   },

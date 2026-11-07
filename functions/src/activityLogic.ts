@@ -21,7 +21,6 @@ export function toStoredActivity(activity: Activity, athleteId: string, eventTim
     moving_time: activity.moving_time,
     elapsed_time: activity.elapsed_time,
     total_elevation_gain: activity.total_elevation_gain,
-    average_speed: activity.average_speed,
     type: activity.type,
     // Firestore rejects undefined fields, and sport_type is optional.
     ...(activity.sport_type !== undefined && { sport_type: activity.sport_type }),

@@ -29,7 +29,7 @@ function httpError(status: number): AxiosError {
   });
 }
 
-const ATHLETE: Athlete = { id: "7", firstname: "Test", lastname: "Athlete", profile: "", refreshToken: "refresh" };
+const ATHLETE: Athlete = { id: "7", firstname: "Test", lastname: "Athlete", refreshToken: "refresh" };
 
 function activity(overrides: Partial<Activity & { athlete: { id: number } }> = {}): Activity & { athlete?: { id: number } } {
   return {
@@ -39,7 +39,6 @@ function activity(overrides: Partial<Activity & { athlete: { id: number } }> = {
     moving_time: 1500,
     elapsed_time: 1600,
     total_elevation_gain: 20,
-    average_speed: 3.3,
     type: "Run",
     start_date: "2027-10-05T06:00:00Z",
     start_date_local: "2027-10-05T08:00:00Z",

@@ -22,7 +22,7 @@ import { Athlete, AthleteWithActivities, StoredActivity, Activity } from "./chal
 import { StravaWebhookEvent } from "./strava";
 
 function athlete(id: string): Athlete {
-  return { id, firstname: "Test", lastname: id, profile: "", refreshToken: "" };
+  return { id, firstname: "Test", lastname: id, refreshToken: "" };
 }
 
 function activity(overrides: Partial<Activity> = {}): Activity {
@@ -33,7 +33,6 @@ function activity(overrides: Partial<Activity> = {}): Activity {
     moving_time: 0,
     elapsed_time: 0,
     total_elevation_gain: 0,
-    average_speed: 0,
     type: "Run",
     start_date: "2026-10-05T06:00:00Z",
     start_date_local: "2026-10-05T08:00:00Z",
@@ -61,7 +60,6 @@ test("toStoredActivity keeps only the scored fields, dropping the rest of a deta
 
   assert.deepEqual(Object.keys(result).sort(), [
     "athleteId",
-    "average_speed",
     "distance",
     "elapsed_time",
     "id",

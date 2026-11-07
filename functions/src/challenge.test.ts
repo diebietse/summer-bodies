@@ -10,7 +10,6 @@ function athlete(id: string, activities: Partial<Activity>[]): AthleteWithActivi
     id,
     firstname: "Test",
     lastname: id,
-    profile: "",
     refreshToken: "",
     activities: activities.map((activity, index) => ({
       id: index,
@@ -19,7 +18,6 @@ function athlete(id: string, activities: Partial<Activity>[]): AthleteWithActivi
       moving_time: 0,
       elapsed_time: 0,
       total_elevation_gain: 0,
-      average_speed: 0,
       type: "Run",
       start_date: "2026-10-05T06:00:00Z",
       start_date_local: "2026-10-05T06:00:00Z",

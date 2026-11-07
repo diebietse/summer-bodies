@@ -113,7 +113,6 @@ export interface Activity {
   moving_time: number;
   elapsed_time: number;
   total_elevation_gain: number;
-  average_speed: number;
   // Strava's legacy type, used for scoring. Newer sports (e.g. Tennis, Padel, Pilates) aren't in its enum and come
   // back as their closest legacy type - usually "Workout" - so `sport_type` is what names them.
   type: StravaActivityType;
@@ -128,7 +127,6 @@ export interface Athlete {
   id: string;
   firstname: string;
   lastname: string;
-  profile: string;
   refreshToken: string;
 }
 

@@ -7,7 +7,7 @@ import { Strava, STRAVA_REVOKE_URL } from "./strava";
 import { Athlete } from "./challenge-models";
 
 function athlete(refreshToken: string): Athlete {
-  return { id: "1", firstname: "Test", lastname: "Athlete", profile: "", refreshToken };
+  return { id: "1", firstname: "Test", lastname: "Athlete", refreshToken };
 }
 
 function rejected(status: number): AxiosError {
