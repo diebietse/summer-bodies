@@ -1,22 +1,28 @@
 #!/usr/bin/env node
-// Fetches branding (app name + logo + optional favicon) from Firestore, via the deployed GET /branding
-// endpoint, and applies it for this build only - restoring the generic defaults afterward regardless of
-// whether the build succeeds, same safety guarantee the old local-overlay deploy script had, just sourced from
-// Firestore instead of a manual folder. This has to run *before* `vite build`, not in the browser, so the
-// static <title>/logo/favicon baked into the shipped HTML are correct for link unfurlers (Slack, WhatsApp,
-// etc.), which don't run JavaScript.
+// Reads branding (app name + logo + optional favicon) from Firestore, with the project's service account (see
+// functions/examples/export-branding.ts), and applies it for this build only - restoring the generic defaults
+// afterward regardless of whether the build succeeds, same safety guarantee the old local-overlay deploy script
+// had, just sourced from Firestore instead of a manual folder. This has to run *before* `vite build`, not in the
+// browser, so the static <title>/logo/favicon baked into the shipped HTML are correct for link unfurlers (Slack,
+// WhatsApp, etc.), which don't run JavaScript.
+//
+// Without service-account.json (CI, or a fresh clone) it builds with the generic defaults - except with
+// --require-branding, which `npm run deploy` passes, so a deploy can never silently ship them.
 // See functions/examples/upload-branding.ts and website/README.md.
-import { execSync } from "node:child_process";
-import { existsSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, execSync } from "node:child_process";
+import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { API_BASE_URL } from "../src/apiBase.js";
 
 const WEBSITE_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const LOGO_PATH = path.join(WEBSITE_DIR, "src/assets/logo.svg");
 const FAVICON_PATH = path.join(WEBSITE_DIR, "public/favicon.ico");
 const ENV_LOCAL_PATH = path.join(WEBSITE_DIR, ".env.local");
 const ENV_LOCAL_BACKUP = `${ENV_LOCAL_PATH}.build-backup`;
+const FUNCTIONS_DIR = path.join(WEBSITE_DIR, "../functions");
+const SERVICE_ACCOUNT_PATH = path.join(WEBSITE_DIR, "../service-account.json");
+const REQUIRE_BRANDING = process.argv.includes("--require-branding");
 
 function isGitClean(filePath) {
   try {
@@ -27,17 +33,17 @@ function isGitClean(filePath) {
   }
 }
 
-// Throws on any network/timeout/HTTP failure - the caller must not confuse "couldn't reach the branding
-// endpoint" with "branding legitimately isn't configured" (an empty-but-successful response), since treating
-// a timeout the same as "no branding" would silently ship generic branding to production.
-//
-// The timeout is generous because /branding is served by the same Cloud Function as everything else
-// (functions/src/index.ts bundles Bot, which imports Puppeteer), so a cold start here pays Puppeteer's
-// module load cost even though this route never touches it.
-async function fetchBranding() {
-  const response = await fetch(`${API_BASE_URL}/branding`, { signal: AbortSignal.timeout(20000) });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return await response.json();
+// Throws if Firestore can't be read - the caller must not confuse that with "branding legitimately isn't
+// configured" (`{}`), since treating a failed read the same as "no branding" would silently ship generic branding
+// to production. Needs functions/'s dependencies installed.
+function readBranding() {
+  const output = path.join(os.tmpdir(), `summer-bodies-branding-${process.pid}.json`);
+  try {
+    execFileSync("npx", ["tsx", "examples/export-branding.ts", output], { cwd: FUNCTIONS_DIR, stdio: ["ignore", "ignore", "inherit"] });
+    return JSON.parse(readFileSync(output, "utf8"));
+  } finally {
+    rmSync(output, { force: true });
+  }
 }
 
 function buildVite() {
@@ -74,11 +80,21 @@ async function applyBranding(branding, assets, updatedPaths) {
 }
 
 async function main() {
+  if (!existsSync(SERVICE_ACCOUNT_PATH)) {
+    if (REQUIRE_BRANDING) {
+      console.error(`error: ${SERVICE_ACCOUNT_PATH} is needed to read the branding - not deploying a generic build.`);
+      process.exit(1);
+    }
+    console.log("No service-account.json, building with generic defaults.");
+    buildVite();
+    return;
+  }
+
   let branding;
   try {
-    branding = await fetchBranding();
+    branding = readBranding();
   } catch (error) {
-    console.error(`error: could not fetch branding: ${error.message}`);
+    console.error(`error: could not read branding: ${error.message}`);
     process.exit(1);
   }
 

@@ -35,8 +35,8 @@ if (fs.existsSync(CUSTOM_SERVICE_ACCOUNT)) {
 
 const db = getFirestore();
 const configRef = db.collection("config").doc("config");
-// Kept in its own collection (rather than alongside configRef) so it's trivially safe to expose publicly -
-// nothing in here is ever a secret, unlike SummerBodiesConfig.
+// Kept in its own collection (rather than alongside configRef): nothing in here is ever a secret, unlike
+// SummerBodiesConfig - it's baked into the public website.
 const brandingRef = db.collection("branding").doc("branding");
 const webhookStatusRef = db.collection("status").doc("stravaWebhook");
 
@@ -361,8 +361,8 @@ export interface SummerBodiesConfig {
   challengeEndDate: string;
 }
 
-// Public-safe (no secrets) white-labeling for the website - see api.ts's GET /branding and
-// functions/examples/upload-branding.ts.
+// Public-safe (no secrets) white-labeling for the website, baked in by its build - see
+// functions/examples/upload-branding.ts and export-branding.ts.
 export interface Branding {
   appName: string;
   logoUrl: string;

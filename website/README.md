@@ -27,7 +27,7 @@ its mock data) are dead-code-eliminated out of `npm run build`'s output.
 | Command                  | Purpose                                                            |
 | ------------------------ | ------------------------------------------------------------------ |
 | `npm run serve`          | Start the Vite dev server                                          |
-| `npm run build`          | Fetch branding, then build for production into `dist/` (see below) |
+| `npm run build`          | Read branding, then build for production into `dist/` (see below)  |
 | `npm run preview`        | Preview a production build locally                                 |
 | `npm run lint`           | Lint and auto-fix with ESLint                                      |
 | `npm run prettier-check` | Check formatting                                                   |
@@ -49,9 +49,11 @@ npm run ts ./examples/upload-branding.ts -- --appName "My Challenge" --logo ./my
 Firebase Storage and stores the app name and asset URLs in Firestore for
 your project.
 
-`npm run build` (`scripts/fetch-branding.mjs`) fetches that branding at
-**build time** — not in the browser — via the deployed `GET /branding`
-endpoint, and applies it only for that build:
+`npm run build` (`scripts/fetch-branding.mjs`) reads that branding at
+**build time** — not in the browser — straight from Firestore with the root
+`service-account.json` (through `functions/examples/export-branding.ts`, so
+`functions/` needs its dependencies installed), and applies it only for that
+build:
 
 - Writes `VITE_APP_NAME` into a temporary `.env.local`
 - Downloads the logo over `src/assets/logo.svg`, and the favicon (if set)
@@ -67,10 +69,12 @@ after the page loads, so that link unfurlers (Slack, WhatsApp, etc.) — which
 read the raw HTML and never run JavaScript — see the correct name, logo,
 and icon.
 
-If Firestore has no branding configured, or the fetch fails (e.g. no
-network), the build falls back to the generic defaults: the `VITE_APP_NAME`
+Without `service-account.json` (CI, or a fresh clone), or if Firestore has no
+branding configured, the build uses the generic defaults: the `VITE_APP_NAME`
 environment variable (see `src/config.js`, defaulting to "Summer Bodies Challenge"
 via the committed `.env`) and the committed `src/assets/logo.svg`/`public/favicon.ico`.
+`npm run deploy` refuses to build without `service-account.json`, so it never
+deploys those by mistake; if Firestore can't be read, the build fails.
 
 [upload-branding]: ../functions/examples/upload-branding.ts
 

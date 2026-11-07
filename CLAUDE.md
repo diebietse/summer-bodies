@@ -25,6 +25,6 @@ npm test               # node --test "src/**/*.test.js"
 npm run prettier-check # prettier --check "src/**/*.{js,vue}" "scripts/**/*.mjs"
 ```
 
-`website`'s `npm run build` also runs `scripts/fetch-branding.mjs`, which fetches live branding from the
-deployed API and fails the build if that fetch fails - don't assume a failure there is a local/environment
-problem without first checking the live `/branding` endpoint.
+`website`'s `npm run build` runs `scripts/fetch-branding.mjs`, which reads the branding from Firestore through
+`functions/examples/export-branding.ts` when the root `service-account.json` exists (so `functions/` needs its
+dependencies installed) and builds generic without it, as CI does.

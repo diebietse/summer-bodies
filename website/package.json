@@ -11,7 +11,7 @@
     "test": "node --test \"src/**/*.test.js\"",
     "prettier-check": "prettier --check \"src/**/*.{js,vue}\" \"scripts/**/*.mjs\"",
     "prettier-fix": "prettier --write \"src/**/*.{js,vue}\" \"scripts/**/*.mjs\"",
-    "deploy": "npm run build && firebase deploy --only hosting"
+    "deploy": "node scripts/fetch-branding.mjs --require-branding && firebase deploy --only hosting"
   },
   "dependencies": {
     "axios": "^1.21.0",

@@ -50,7 +50,7 @@ An example config upload is provided in [upload-config.ts][upload-config].
 
 ## Branding
 
-The website's app name and logo are white-labeled at runtime from Firestore, not baked into the build — see [website's README][website-readme] and [upload-branding.ts][upload-branding].
+The website's app name and logo are white-labeled from Firestore and baked into the build when it's deployed — see [website's README][website-readme] and [upload-branding.ts][upload-branding].
 
 ### Strava API Application
 

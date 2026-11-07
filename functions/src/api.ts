@@ -7,8 +7,6 @@ import { registerAthlete } from "./registration";
 import { webhookPostResponse, webhookVerificationResponse } from "./activityLogic";
 import { dateStringUnix, now } from "./util";
 
-const DEFAULT_APP_NAME = "Summer Bodies Challenge";
-
 export class Api {
   private router = Router();
 
@@ -115,19 +113,6 @@ export class Api {
         await reportError("Error fetching Strava config", error);
         res.status(500).json({ error: "Could not load Strava configuration" });
       }
-    });
-
-    this.router.get("/branding", async (_req: Request, res: Response) => {
-      // Always 200 with sane defaults - a branding lookup failure should never break the page.
-      const branding = await Firestore.getBranding().catch(async (error) => {
-        await reportError("Error fetching branding", error);
-        return null;
-      });
-      res.status(200).json({
-        appName: branding?.appName || DEFAULT_APP_NAME,
-        logoUrl: branding?.logoUrl || null,
-        faviconUrl: branding?.faviconUrl || null,
-      });
     });
 
     // One-time validation handshake Strava performs when a push subscription is created (or re-verified) -
