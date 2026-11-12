@@ -28,9 +28,8 @@
     <section>
       <h2>What we use it for, and who sees it</h2>
       <p>
-        Only to run the challenge: team and individual results, goals, streaks, FitCoin and lucky draws. Your name and your activity totals are shown to the other participants on the results pages. Those are only reachable through private links with a long random code, shared with participants, so
-        they work like a password: they can't be guessed, browsed to or found through search engines<template v-if="resultsSharedIn"> and posted in {{ resultsSharedIn }}</template
-        >.
+        Only to run the challenge: team and individual results, goals, streaks, FitCoin and lucky draws. Your name and your activity totals are shown to the other participants on the results pages<template v-if="resultsSharedIn"> and posted in {{ resultsSharedIn }}</template
+        >. The results pages are only reachable through private links with a long random code, shared with participants, so they work like a password: they can't be guessed, browsed to or found through search engines.
       </p>
       <p>We never sell or share your data with anyone else, and never use it for advertising, analytics or AI.</p>
     </section>
