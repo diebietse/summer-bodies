@@ -1266,6 +1266,19 @@ function scoreSound(k) {
     soundOn = !soundOn; soundBtn.textContent = soundOn ? 'Sound on' : 'Sound off'; soundBtn.setAttribute('aria-pressed', String(soundOn));
     if (!soundOn) stopAudio(); else if (playing) { startT = cur; startWall = performance.now(); startAudio(); }
   });
+  // Embedded in the draw page (Draw.vue), the frame can't know how tall it needs to be: the 16:9 video gets the
+  // frame's full width, but the control bar below wraps to two or three rows on a phone. So report the height that
+  // fits both, and the page sizes the frame to it - without this, a phone's frame was all controls and no video.
+  // Same-origin only; skipped when standalone (render-reveal.ts) or in full screen.
+  const stage = d.querySelector('.stage'), bar = d.querySelector('.bar');
+  function reportHeight() {
+    if (window.parent === window || fsOn()) return;
+    const cs = getComputedStyle(d.body);
+    const height = stage.clientWidth * 9 / 16 + bar.offsetHeight + parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.rowGap || '0');
+    window.parent.postMessage({ type: 'lucky-draw-height', height: Math.ceil(height) }, location.origin);
+  }
+  new ResizeObserver(reportHeight).observe(bar);
+  addEventListener('resize', reportHeight);
   window.seek = (t) => { cur = t; poster = false; render(t); ui(); };
   window.DURATION = DURATION; window.scoreSound = scoreSound;
   window.ready = Promise.all(['900 40px Nunito', '700 40px Nunito', '700 40px Fredoka', '400 40px Fredoka'].map((f) => document.fonts.load(f, 'AaZz09#$–'))).then(() => document.fonts.ready).catch(() => {}).then(() => { ui(); requestAnimationFrame(frame); });

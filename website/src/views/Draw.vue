@@ -30,7 +30,7 @@
         </template>
         <template v-else>
           <div v-if="watching" class="reveal mb-3">
-            <iframe :src="revealUrl" title="Lucky draw reveal" allow="autoplay; fullscreen" allowfullscreen></iframe>
+            <iframe ref="reveal" :src="revealUrl" :style="revealHeight ? { height: `${revealHeight}px`, aspectRatio: 'auto' } : null" title="Lucky draw reveal" allow="autoplay; fullscreen" allowfullscreen></iframe>
           </div>
           <div class="d-flex gap-2 justify-content-center flex-wrap">
             <button v-if="!watching" class="btn btn-primary btn-lg" @click="watching = true">Watch the reveal</button>
@@ -172,6 +172,8 @@ export default {
       result: null,
       showWinners: false,
       watching: false,
+      // Set by the reveal itself (see onRevealMessage), which knows how tall its controls wrap to.
+      revealHeight: null,
     };
   },
   computed: {
@@ -198,6 +200,7 @@ export default {
     },
   },
   async mounted() {
+    window.addEventListener("message", this.onRevealMessage);
     document.title = `${APP_NAME} - Lucky Draw`;
     try {
       this.snapshotText =
@@ -216,8 +219,15 @@ export default {
   },
   beforeUnmount() {
     clearInterval(this.timer);
+    window.removeEventListener("message", this.onRevealMessage);
   },
   methods: {
+    // public/lucky-draw.html reports the height that fits its full-width 16:9 video plus its control bar, which wraps
+    // to several rows on a phone - a fixed aspect ratio left a phone's frame all controls and no video.
+    onRevealMessage(event) {
+      if (event.origin !== window.location.origin || event.source !== this.$refs.reveal?.contentWindow) return;
+      if (event.data?.type === "lucky-draw-height" && Number.isFinite(event.data.height)) this.revealHeight = event.data.height;
+    },
     ticketCount(entry) {
       return entry.lastTicket - entry.firstTicket + 1;
     },
@@ -285,7 +295,8 @@ export default {
   font-size: 1.5rem;
 }
 
-/* The animation is 16:9 with its control bar below; it letterboxes itself to whatever box it gets. */
+/* The animation is 16:9 with its control bar below; it letterboxes itself to whatever box it gets. 16:10 until the
+   reveal reports the height it actually needs (onRevealMessage). */
 .reveal iframe {
   width: 100%;
   aspect-ratio: 16 / 10;
