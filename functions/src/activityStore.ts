@@ -55,7 +55,7 @@ export async function backfillAthleteActivities(
 
 export interface MissedActivity {
   athleteName: string;
-  activityId: number;
+  activityId: string;
   startDate: string;
 }
 
@@ -63,9 +63,9 @@ export interface ReconciliationResult {
   // Polled activities that weren't in the store - each a create event the webhook pipeline missed.
   missed: MissedActivity[];
   // Ids of stored activities the poll proved are gone (see activityLogic.staleStoredActivityIds), now deleted.
-  removed: number[];
+  removed: string[];
   // Ids of stored activities whose data the poll showed had changed - edits the webhooks didn't report.
-  changed: number[];
+  changed: string[];
 }
 
 // Makes the store match a fresh live poll of [startUnixTime, endUnixTime): upserts every polled activity and
@@ -130,9 +130,9 @@ function webhookDeps(config: SummerBodiesConfig) {
   return {
     getAthlete: (athleteId: string) => Firestore.getAthlete(athleteId),
     refreshAccessToken: (athlete: Athlete) => refreshAndPersistAthleteToken(config.stravaClientId, config.stravaClientSecret, athlete),
-    getActivity: (accessToken: string, activityId: number) => strava.getActivity(accessToken, activityId),
+    getActivity: (accessToken: string, activityId: string) => strava.getActivity(accessToken, activityId),
     upsertActivity: (activity: StoredActivity) => Firestore.upsertActivity(activity),
-    deleteActivity: (activityId: number, athleteId: string, eventTime?: number) => Firestore.deleteActivity(activityId, athleteId, eventTime),
+    deleteActivity: (activityId: string, athleteId: string, eventTime?: number) => Firestore.deleteActivity(activityId, athleteId, eventTime),
     removeAthlete: (athleteId: string) => Firestore.removeAthlete(athleteId, config.challengeStartDate),
   };
 }

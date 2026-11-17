@@ -4,7 +4,7 @@ import { Strava } from "./strava";
 import { errorMessage, isExpectedStravaCodeError, reportError } from "./errorReporting";
 import { backfillAthleteActivities } from "./activityStore";
 import { registerAthlete } from "./registration";
-import { webhookPostResponse, webhookVerificationResponse } from "./activityLogic";
+import { parseWebhookBody, webhookPostResponse, webhookVerificationResponse } from "./activityLogic";
 import { dateStringUnix, now } from "./util";
 
 export class Api {
@@ -21,7 +21,7 @@ export class Api {
         const registered = await registerAthlete(token, {
           isRegistered: (athleteId) => Firestore.athleteIsRegistered(athleteId),
           store: (newToken) => Firestore.storeAthlete(newToken),
-          saveToken: (athleteId, refreshToken) => Firestore.updateAthleteRefreshToken(athleteId.toString(), refreshToken),
+          saveToken: (athleteId, refreshToken) => Firestore.updateAthleteRefreshToken(athleteId, refreshToken),
           revoke: (refreshToken) => Strava.revokeToken(stravaClientId, stravaClientSecret, refreshToken),
           reportError: (context, error) => reportError(context, error, config),
         });
@@ -34,7 +34,7 @@ export class Api {
           // this athlete's next webhook event or the next weekly reconciliation instead.
           try {
             const athlete = {
-              id: token.athlete.id.toString(),
+              id: token.athlete.id,
               firstname: token.athlete.firstname,
               lastname: token.athlete.lastname,
               refreshToken: token.refresh_token,
@@ -134,7 +134,8 @@ export class Api {
     // applies it - see webhookEvents.ts.
     this.router.post("/strava-webhook/:secret", async (req: Request, res: Response) => {
       try {
-        const response = webhookPostResponse(String(req.params.secret), req.body, await Firestore.getConfig());
+        const body = parseWebhookBody((req as Request & { rawBody?: Buffer }).rawBody);
+        const response = webhookPostResponse(String(req.params.secret), body, await Firestore.getConfig());
         if (response.warning) console.warn(response.warning);
         if (response.queue) await Firestore.queueWebhookEvent(response.queue);
         res.status(response.status).json(response.body);

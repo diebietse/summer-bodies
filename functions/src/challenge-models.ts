@@ -107,7 +107,8 @@ export function compareContestantFitcoin(a: ContestantFitcoin, b: ContestantFitc
 
 // subset of https://developers.strava.com/docs/reference/#api-models-SummaryActivity
 export interface Activity {
-  id: number;
+  // An exact string, not a number - Strava ids become 64-bit (see stravaIds.ts).
+  id: string;
   name: string;
   distance: number;
   moving_time: number;

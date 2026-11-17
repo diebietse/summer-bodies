@@ -11,6 +11,7 @@ import {
   isWebhookEvent,
   secretsMatch,
   webhookLivenessProblems,
+  parseWebhookBody,
   webhookPostResponse,
   webhookVerificationResponse,
   isLivenessCheckTime,
@@ -27,7 +28,7 @@ function athlete(id: string): Athlete {
 
 function activity(overrides: Partial<Activity> = {}): Activity {
   return {
-    id: 1,
+    id: "1",
     name: "Activity",
     distance: 0,
     moving_time: 0,
@@ -45,9 +46,9 @@ function stored(overrides: Partial<StoredActivity> = {}): StoredActivity {
 }
 
 test("toStoredActivity derives startDateUnix from start_date and attaches athleteId/lastEventTime", () => {
-  const result = toStoredActivity(activity({ id: 42, start_date: "2026-10-05T06:00:00Z" }), "7", 123);
+  const result = toStoredActivity(activity({ id: "42", start_date: "2026-10-05T06:00:00Z" }), "7", 123);
 
-  assert.equal(result.id, 42);
+  assert.equal(result.id, "42");
   assert.equal(result.athleteId, "7");
   assert.equal(result.lastEventTime, 123);
   assert.equal(result.startDateUnix, Math.floor(new Date("2026-10-05T06:00:00Z").getTime() / 1000));
@@ -86,38 +87,38 @@ test("mergeIntoAthletesWithActivities gives a registered athlete with no stored 
 });
 
 test("mergeIntoAthletesWithActivities excludes an activity belonging to an unregistered athlete", () => {
-  const storedActivities = [stored({ id: 1, athleteId: "1" }), stored({ id: 2, athleteId: "removed-athlete" })];
+  const storedActivities = [stored({ id: "1", athleteId: "1" }), stored({ id: "2", athleteId: "removed-athlete" })];
 
   const result = mergeIntoAthletesWithActivities([athlete("1")], storedActivities);
 
   assert.equal(result.length, 1);
   assert.deepEqual(
     result[0].activities.map((a) => a.id),
-    [1],
+    ["1"],
   );
 });
 
 test("mergeIntoAthletesWithActivities groups multiple activities under the same athlete", () => {
-  const storedActivities = [stored({ id: 1, athleteId: "1" }), stored({ id: 2, athleteId: "1" }), stored({ id: 3, athleteId: "2" })];
+  const storedActivities = [stored({ id: "1", athleteId: "1" }), stored({ id: "2", athleteId: "1" }), stored({ id: "3", athleteId: "2" })];
 
   const result = mergeIntoAthletesWithActivities([athlete("1"), athlete("2")], storedActivities);
 
   assert.deepEqual(
     result.find((a) => a.id === "1")?.activities.map((a) => a.id),
-    [1, 2],
+    ["1", "2"],
   );
   assert.deepEqual(
     result.find((a) => a.id === "2")?.activities.map((a) => a.id),
-    [3],
+    ["3"],
   );
 });
 
 function webhookEvent(overrides: Partial<StravaWebhookEvent> = {}): StravaWebhookEvent {
   return {
     object_type: "athlete",
-    object_id: 1,
+    object_id: "1",
     aspect_type: "update",
-    owner_id: 1,
+    owner_id: "1",
     subscription_id: 1,
     event_time: 0,
     ...overrides,
@@ -154,23 +155,23 @@ test("shouldSkipStaleWrite is false when the incoming write is newer than or equ
 });
 
 function polled(id: string, activityIds: number[]): AthleteWithActivities {
-  return { ...athlete(id), activities: activityIds.map((activityId) => activity({ id: activityId })) };
+  return { ...athlete(id), activities: activityIds.map((activityId) => activity({ id: String(activityId) })) };
 }
 
 test("staleStoredActivityIds returns stored activities a successfully polled athlete no longer has", () => {
-  const storedActivities = [stored({ id: 1, athleteId: "1" }), stored({ id: 2, athleteId: "1" })];
+  const storedActivities = [stored({ id: "1", athleteId: "1" }), stored({ id: "2", athleteId: "1" })];
 
-  assert.deepEqual(staleStoredActivityIds(storedActivities, [polled("1", [1])]), [2]);
+  assert.deepEqual(staleStoredActivityIds(storedActivities, [polled("1", [1])]), ["2"]);
 });
 
 test("staleStoredActivityIds leaves alone the activities of an athlete whose poll failed", () => {
-  const storedActivities = [stored({ id: 1, athleteId: "1" }), stored({ id: 2, athleteId: "2" })];
+  const storedActivities = [stored({ id: "1", athleteId: "1" }), stored({ id: "2", athleteId: "2" })];
 
   assert.deepEqual(staleStoredActivityIds(storedActivities, [polled("1", [1])]), []);
 });
 
 test("staleStoredActivityIds is empty when the store matches the poll", () => {
-  assert.deepEqual(staleStoredActivityIds([stored({ id: 1, athleteId: "1" })], [polled("1", [1, 3])]), []);
+  assert.deepEqual(staleStoredActivityIds([stored({ id: "1", athleteId: "1" })], [polled("1", [1, 3])]), []);
 });
 
 test("isWebhookEvent accepts Strava's event shapes", () => {
@@ -184,7 +185,11 @@ test("isWebhookEvent rejects junk", () => {
     null,
     "event",
     {},
-    { ...webhookEvent(), owner_id: "1" },
+    // Ids arrive as digit strings (stravaIds.ts) - a raw number, or anything else, is junk.
+    { ...webhookEvent(), owner_id: 1 },
+    { ...webhookEvent(), owner_id: "-1" },
+    { ...webhookEvent(), object_id: "1.5" },
+    { ...webhookEvent(), object_id: "" },
     { ...webhookEvent(), object_type: "club" },
     { ...webhookEvent(), event_time: undefined },
   ]) {
@@ -251,8 +256,28 @@ test("webhookPostResponse turns away a wrong secret (404) and a malformed body (
   assert.equal(wrongSecret.queue ?? malformed.queue, undefined);
 });
 
+test("parseWebhookBody keeps a 64-bit object_id/owner_id exact all the way to the queued event", () => {
+  // 2^53 + 1, which plain JSON.parse (what req.body gets on Cloud Functions) rounds to ...992.
+  const raw = Buffer.from(
+    `{"object_type":"activity","object_id":9007199254740993,"aspect_type":"create","owner_id":12345678901234567,"subscription_id":5,"event_time":1700000000}`,
+  );
+
+  const response = webhookPostResponse("secret", parseWebhookBody(raw), ROUTE_CONFIG);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.queue?.object_id, "9007199254740993");
+  assert.equal(response.queue?.owner_id, "12345678901234567");
+  assert.equal(response.queue?.subscription_id, 5);
+});
+
+test("parseWebhookBody leaves a body that isn't JSON, or a missing one, for webhookPostResponse to turn away", () => {
+  for (const raw of [Buffer.from("object_id=1&owner_id=2"), Buffer.from(""), undefined]) {
+    assert.equal(webhookPostResponse("secret", parseWebhookBody(raw), ROUTE_CONFIG).status, 400, String(raw));
+  }
+});
+
 test("webhookPostResponse acknowledges but drops an event for another subscription, logging whose it was", () => {
-  const response = webhookPostResponse("secret", webhookEvent({ subscription_id: 6, owner_id: 4242 }), ROUTE_CONFIG);
+  const response = webhookPostResponse("secret", webhookEvent({ subscription_id: 6, owner_id: "4242" }), ROUTE_CONFIG);
 
   assert.equal(response.status, 200);
   assert.equal(response.queue, undefined);
@@ -270,13 +295,13 @@ test("isLivenessCheckTime covers the challenge's days and the day after, in SAST
 });
 
 test("missedStoredActivities lists the polled activities the store doesn't have", () => {
-  const missed = missedStoredActivities([stored({ id: 1, athleteId: "1" })], [polled("1", [1, 2])]);
+  const missed = missedStoredActivities([stored({ id: "1", athleteId: "1" })], [polled("1", [1, 2])]);
 
-  assert.deepEqual(missed, [{ athleteName: "Test 1", activityId: 2, startDate: "2026-10-05T06:00:00Z" }]);
+  assert.deepEqual(missed, [{ athleteName: "Test 1", activityId: "2", startDate: "2026-10-05T06:00:00Z" }]);
 });
 
 test("storedActivityChanged spots an edit to any stored field, and nothing else", () => {
-  const live = activity({ id: 5, distance: 1474.7, elapsed_time: 3750 });
+  const live = activity({ id: "5", distance: 1474.7, elapsed_time: 3750 });
   const storedCopy = toStoredActivity(live, "1", 100);
 
   assert.equal(storedActivityChanged(storedCopy, live), false);
@@ -285,15 +310,15 @@ test("storedActivityChanged spots an edit to any stored field, and nothing else"
 });
 
 test("storedActivityChanged treats a copy stored with extra fields (older code kept the whole activity) as changed", () => {
-  const live = activity({ id: 5 });
+  const live = activity({ id: "5" });
   const bloated = { ...toStoredActivity(live, "1", 100), map: { polyline: "abc" } } as StoredActivity;
 
   assert.equal(storedActivityChanged(bloated, live), true);
 });
 
 test("changedStoredActivities lists polled activities whose stored copy is out of date", () => {
-  const storedActivities = [toStoredActivity(activity({ id: 1 }), "1", 0), toStoredActivity(activity({ id: 2, distance: 5000 }), "1", 0)];
-  const polledAthlete = { ...athlete("1"), activities: [activity({ id: 1 }), activity({ id: 2, distance: 1500 }), activity({ id: 3 })] };
+  const storedActivities = [toStoredActivity(activity({ id: "1" }), "1", 0), toStoredActivity(activity({ id: "2", distance: 5000 }), "1", 0)];
+  const polledAthlete = { ...athlete("1"), activities: [activity({ id: "1" }), activity({ id: "2", distance: 1500 }), activity({ id: "3" })] };
 
-  assert.deepEqual(changedStoredActivities(storedActivities, [polledAthlete]), [2]);
+  assert.deepEqual(changedStoredActivities(storedActivities, [polledAthlete]), ["2"]);
 });

@@ -3,10 +3,10 @@
 import { TokenFromCodeResponse } from "./strava";
 
 export interface RegistrationDeps {
-  isRegistered(athleteId: number): Promise<boolean>;
+  isRegistered(athleteId: string): Promise<boolean>;
   store(token: TokenFromCodeResponse): Promise<void>;
   // Replaces a registered athlete's stored refresh token.
-  saveToken(athleteId: number, refreshToken: string): Promise<void>;
+  saveToken(athleteId: string, refreshToken: string): Promise<void>;
   // Revokes the athlete's grant on Strava's side - see Strava.revokeToken.
   revoke(refreshToken: string): Promise<void>;
   reportError(context: string, error: unknown): Promise<void>;

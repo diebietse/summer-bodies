@@ -5,6 +5,7 @@ import { Athlete, AthleteWithActivities, Activity, StoredActivity } from "./chal
 import { StravaWebhookEvent } from "./strava";
 import { timingSafeEqual } from "crypto";
 import { dateStringUnix } from "./util";
+import { isStravaId, parseJsonWithStringIds } from "./stravaIds";
 
 // Converts a Strava activity into its stored shape - shared by the webhook event handler (eventTime = the
 // webhook's own event_time) and anything that writes activities outside the webhook pipeline, like the
@@ -58,7 +59,10 @@ export function isWebhookEvent(body: unknown): body is StravaWebhookEvent {
     event !== null &&
     (event.object_type === "activity" || event.object_type === "athlete") &&
     (event.aspect_type === "create" || event.aspect_type === "update" || event.aspect_type === "delete") &&
-    [event.object_id, event.owner_id, event.subscription_id, event.event_time].every((value) => Number.isInteger(value)) &&
+    // object_id/owner_id as exact strings (stravaIds.ts), the rest plain numbers.
+    isStravaId(event.object_id) &&
+    isStravaId(event.owner_id) &&
+    [event.subscription_id, event.event_time].every((value) => Number.isInteger(value)) &&
     (event.updates === undefined || (typeof event.updates === "object" && event.updates !== null))
   );
 }
@@ -86,7 +90,7 @@ export function shouldSkipStaleWrite(existingLastEventTime: number | undefined, 
 // The stored activities a fresh live poll proves are gone: in the polled window, owned by an athlete whose poll
 // succeeded, but not in what Strava returned for them - e.g. deleted or made private while its webhook event was
 // missed. Activities of athletes whose poll failed are left alone, since their absence proves nothing.
-export function staleStoredActivityIds(storedActivities: StoredActivity[], polledAthletes: AthleteWithActivities[]): number[] {
+export function staleStoredActivityIds(storedActivities: StoredActivity[], polledAthletes: AthleteWithActivities[]): string[] {
   const polledIds = new Set(polledAthletes.map((athlete) => athlete.id));
   const liveIds = new Set(polledAthletes.flatMap((athlete) => athlete.activities.map((activity) => activity.id)));
   return storedActivities.filter((stored) => polledIds.has(stored.athleteId) && !liveIds.has(stored.id)).map((stored) => stored.id);
@@ -137,6 +141,22 @@ export function webhookVerificationResponse(
     : { status: 403, body: { error: "Verification token mismatch" } };
 }
 
+// A webhook POST's body, with object_id/owner_id as exact strings (stravaIds.ts). Read from the raw bytes because
+// Cloud Functions parses a JSON body with plain JSON.parse before Express sees it, so in req.body a 64-bit id is
+// already rounded (and express.json then skips the already-read body). Anything that isn't JSON comes back as its text,
+// which webhookPostResponse turns away (and logs).
+export function parseWebhookBody(rawBody: Buffer | undefined): unknown {
+  if (rawBody === undefined) return undefined;
+  const text = rawBody.toString("utf8");
+  try {
+    return parseJsonWithStringIds(text, WEBHOOK_ID_KEYS);
+  } catch {
+    return text;
+  }
+}
+
+const WEBHOOK_ID_KEYS: ReadonlySet<string> = new Set(["object_id", "owner_id"]);
+
 // What POST /strava-webhook/:secret does with a request: `queue` is the event to queue, if any. An event for another
 // subscription is acknowledged (a 200) but dropped, so Strava doesn't keep retrying one we no longer use.
 export function webhookPostResponse(
@@ -172,7 +192,7 @@ export function isLivenessCheckTime(now: number, challengeStartDate: string, cha
 export function missedStoredActivities(
   storedActivities: StoredActivity[],
   polledAthletes: AthleteWithActivities[],
-): { athleteName: string; activityId: number; startDate: string }[] {
+): { athleteName: string; activityId: string; startDate: string }[] {
   const storedIds = new Set(storedActivities.map((activity) => activity.id));
   return polledAthletes.flatMap((athlete) =>
     athlete.activities
@@ -191,7 +211,7 @@ export function storedActivityChanged(stored: StoredActivity, live: Activity): b
 }
 
 // Polled activities whose stored copy is out of date - edits the webhooks didn't report.
-export function changedStoredActivities(storedActivities: StoredActivity[], polledAthletes: AthleteWithActivities[]): number[] {
+export function changedStoredActivities(storedActivities: StoredActivity[], polledAthletes: AthleteWithActivities[]): string[] {
   const storedById = new Map(storedActivities.map((activity) => [activity.id, activity]));
   return polledAthletes.flatMap((athlete) =>
     athlete.activities

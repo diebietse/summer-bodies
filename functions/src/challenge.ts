@@ -14,6 +14,7 @@ import {
   StreakState,
   STREAK_MIN_DISTANCE_M,
 } from "./challenge-models";
+import { compareStravaIds } from "./stravaIds";
 
 export interface IgnoredDuplicate {
   athlete: string;
@@ -47,7 +48,11 @@ export class Challenge {
 
     const deduplicated = athletes.map((athlete) => {
       const shortestFirst = [...athlete.activities].sort(
-        (a, b) => a.moving_time - b.moving_time || a.elapsed_time - b.elapsed_time || a.start_date.localeCompare(b.start_date) || a.id - b.id,
+        (a, b) =>
+          a.moving_time - b.moving_time ||
+          a.elapsed_time - b.elapsed_time ||
+          a.start_date.localeCompare(b.start_date) ||
+          compareStravaIds(a.id, b.id),
       );
       const kept: Activity[] = [];
       for (const activity of shortestFirst) {

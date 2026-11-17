@@ -31,9 +31,9 @@ function httpError(status: number): AxiosError {
 
 const ATHLETE: Athlete = { id: "7", firstname: "Test", lastname: "Athlete", refreshToken: "refresh" };
 
-function activity(overrides: Partial<Activity & { athlete: { id: number } }> = {}): Activity & { athlete?: { id: number } } {
+function activity(overrides: Partial<Activity & { athlete: { id: string } }> = {}): Activity & { athlete?: { id: string } } {
   return {
-    id: 42,
+    id: "42",
     name: "Run",
     distance: 5000,
     moving_time: 1500,
@@ -42,18 +42,18 @@ function activity(overrides: Partial<Activity & { athlete: { id: number } }> = {
     type: "Run",
     start_date: "2027-10-05T06:00:00Z",
     start_date_local: "2027-10-05T08:00:00Z",
-    athlete: { id: 7 },
+    athlete: { id: "7" },
     ...overrides,
   };
 }
 
 function event(overrides: Partial<StravaWebhookEvent> = {}): StravaWebhookEvent {
-  return { object_type: "activity", object_id: 42, aspect_type: "create", owner_id: 7, subscription_id: 1, event_time: 1000, ...overrides };
+  return { object_type: "activity", object_id: "42", aspect_type: "create", owner_id: "7", subscription_id: 1, event_time: 1000, ...overrides };
 }
 
 // Records what the handler changed. Strava's answers default to "the token works and the activity exists".
 function fakeDeps(overrides: Partial<WebhookDeps> = {}) {
-  const changes = { upserted: [] as StoredActivity[], deleted: [] as number[], removed: [] as string[] };
+  const changes = { upserted: [] as StoredActivity[], deleted: [] as string[], removed: [] as string[] };
   const deps: WebhookDeps = {
     getAthlete: async (id) => (id === ATHLETE.id ? ATHLETE : null),
     refreshAccessToken: async () => "access",
@@ -69,7 +69,7 @@ function fakeDeps(overrides: Partial<WebhookDeps> = {}) {
 test("an event for an unregistered athlete changes nothing", async () => {
   const { deps, changes } = fakeDeps();
 
-  await processWebhookEvent(event({ owner_id: 999 }), deps);
+  await processWebhookEvent(event({ owner_id: "999" }), deps);
 
   assert.deepEqual(changes, { upserted: [], deleted: [], removed: [] });
 });
@@ -95,7 +95,7 @@ test("a delete removes the activity only once Strava no longer shows it", async 
 
     await processWebhookEvent(event({ aspect_type: "delete" }), deps);
 
-    assert.deepEqual(changes.deleted, [42], `status ${status}`);
+    assert.deepEqual(changes.deleted, ["42"], `status ${status}`);
   }
 });
 
@@ -109,7 +109,7 @@ test("a delete for an activity Strava still shows keeps (and refreshes) it inste
 });
 
 test("an activity Strava says belongs to someone else isn't stored for the event's owner", async () => {
-  const { deps, changes } = fakeDeps({ getActivity: async () => activity({ athlete: { id: 8 } }) });
+  const { deps, changes } = fakeDeps({ getActivity: async () => activity({ athlete: { id: "8" } }) });
 
   await processWebhookEvent(event(), deps);
 
@@ -117,7 +117,7 @@ test("an activity Strava says belongs to someone else isn't stored for the event
 });
 
 test("a deauthorization removes the athlete only once their token is rejected", async () => {
-  const deauthorization = event({ object_type: "athlete", object_id: 7, aspect_type: "update", updates: { authorized: "false" } });
+  const deauthorization = event({ object_type: "athlete", object_id: "7", aspect_type: "update", updates: { authorized: "false" } });
   const confirmed = fakeDeps({
     refreshAccessToken: async () => {
       throw httpError(400);
@@ -270,10 +270,10 @@ function fakeRecheckDeps(live: Activity[], overrides: Partial<RecheckDeps> = {})
 }
 
 test("recheckAthleteActivities adds missed activities, updates edited ones and deletes ones Strava no longer has", async () => {
-  const unchanged = toStoredActivity(activity({ id: 1 }), "7", 100);
-  const cropped = toStoredActivity(activity({ id: 2, distance: 5105.5 }), "7", 100);
-  const gone = toStoredActivity(activity({ id: 3 }), "7", 100);
-  const { deps, changes, listed } = fakeRecheckDeps([activity({ id: 1 }), activity({ id: 2, distance: 1474.7 }), activity({ id: 4 })], {
+  const unchanged = toStoredActivity(activity({ id: "1" }), "7", 100);
+  const cropped = toStoredActivity(activity({ id: "2", distance: 5105.5 }), "7", 100);
+  const gone = toStoredActivity(activity({ id: "3" }), "7", 100);
+  const { deps, changes, listed } = fakeRecheckDeps([activity({ id: "1" }), activity({ id: "2", distance: 1474.7 }), activity({ id: "4" })], {
     getActivity: async () => {
       throw httpError(404);
     },
@@ -286,16 +286,16 @@ test("recheckAthleteActivities adds missed activities, updates edited ones and d
   assert.deepEqual(
     changes.upserted.map((a) => [a.id, a.lastEventTime]),
     [
-      [2, 999],
-      [4, 999],
+      ["2", 999],
+      ["4", 999],
     ],
   );
-  assert.deepEqual(changes.deleted, [3]);
+  assert.deepEqual(changes.deleted, ["3"]);
 });
 
 test("recheckAthleteActivities keeps an activity missing from the list that Strava still has (e.g. its start was moved)", async () => {
-  const moved = toStoredActivity(activity({ id: 5, start_date: "2027-10-05T06:00:00Z" }), "7", 100);
-  const { deps, changes } = fakeRecheckDeps([], { getActivity: async () => activity({ id: 5, start_date: "2027-10-01T06:00:00Z" }) });
+  const moved = toStoredActivity(activity({ id: "5", start_date: "2027-10-05T06:00:00Z" }), "7", 100);
+  const { deps, changes } = fakeRecheckDeps([], { getActivity: async () => activity({ id: "5", start_date: "2027-10-01T06:00:00Z" }) });
 
   const result = await recheckAthleteActivities(ATHLETE, [moved], WINDOW, deps, 999);
 
@@ -305,8 +305,8 @@ test("recheckAthleteActivities keeps an activity missing from the list that Stra
 });
 
 test("recheckAthleteActivities leaves an unchanged activity missing from the list alone (e.g. past the 50-per-page cap)", async () => {
-  const stored = toStoredActivity(activity({ id: 6 }), "7", 100);
-  const { deps, changes } = fakeRecheckDeps([], { getActivity: async () => activity({ id: 6 }) });
+  const stored = toStoredActivity(activity({ id: "6" }), "7", 100);
+  const { deps, changes } = fakeRecheckDeps([], { getActivity: async () => activity({ id: "6" }) });
 
   assert.deepEqual((await recheckAthleteActivities(ATHLETE, [stored], WINDOW, deps, 999)).changes, []);
   assert.deepEqual(changes, { upserted: [], deleted: [], removed: [] });
@@ -341,9 +341,9 @@ test("recheckRecentActivityOwners checks each athlete with stored activities onc
     listActivities: async () => [],
   });
   const stored = [
-    toStoredActivity(activity({ id: 1 }), "a", 0),
-    toStoredActivity(activity({ id: 2 }), "a", 0),
-    toStoredActivity(activity({ id: 3 }), "gone", 0),
+    toStoredActivity(activity({ id: "1" }), "a", 0),
+    toStoredActivity(activity({ id: "2" }), "a", 0),
+    toStoredActivity(activity({ id: "3" }), "gone", 0),
   ];
 
   await recheckRecentActivityOwners(stored, WINDOW, deps, 999);
@@ -359,9 +359,9 @@ test("recheckRecentActivityOwners lists rejected tokens and failures without sto
       if (athlete.id === "broken") throw httpError(500);
       return "access";
     },
-    listActivities: async () => [activity({ id: 9 })],
+    listActivities: async () => [activity({ id: "9" })],
   });
-  const stored = ["dead", "broken", "fine"].map((id, i) => toStoredActivity(activity({ id: i + 1 }), id, 0));
+  const stored = ["dead", "broken", "fine"].map((id, i) => toStoredActivity(activity({ id: String(i + 1) }), id, 0));
 
   const summary = await recheckRecentActivityOwners(stored, WINDOW, deps, 999);
 
@@ -383,7 +383,7 @@ test("recheckRecentActivityOwners stops at Strava's rate limit", async () => {
       return [];
     },
   });
-  const stored = ["a", "b", "c"].map((id, i) => toStoredActivity(activity({ id: i + 1 }), id, 0));
+  const stored = ["a", "b", "c"].map((id, i) => toStoredActivity(activity({ id: String(i + 1) }), id, 0));
 
   const summary = await recheckRecentActivityOwners(stored, WINDOW, deps, 999, 1);
 
@@ -427,7 +427,7 @@ test("recheckRecentActivityOwners records an athlete lookup that fails, and stil
       throw httpError(404);
     },
   });
-  const stored = ["flaky", "fine"].map((id, i) => toStoredActivity(activity({ id: i + 1 }), id, 0));
+  const stored = ["flaky", "fine"].map((id, i) => toStoredActivity(activity({ id: String(i + 1) }), id, 0));
 
   const summary = await recheckRecentActivityOwners(stored, WINDOW, deps, 999);
 

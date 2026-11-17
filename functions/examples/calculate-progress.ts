@@ -11,7 +11,7 @@ const activities: AthleteWithActivities[] = [
     refreshToken: "",
     activities: [
       {
-        id: 1,
+        id: "1",
         type: "Golf",
         distance: 1,
         moving_time: 60 * 30,
@@ -22,7 +22,7 @@ const activities: AthleteWithActivities[] = [
         start_date_local: "now",
       },
       {
-        id: 2,
+        id: "2",
         type: "Golf",
         distance: 1,
         moving_time: 60 * 30,

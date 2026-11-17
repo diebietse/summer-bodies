@@ -154,8 +154,8 @@ export class Firestore {
     return res;
   }
 
-  static async athleteIsRegistered(athleteId: number): Promise<boolean> {
-    const athlete = db.collection("athletes").doc(athleteId.toString());
+  static async athleteIsRegistered(athleteId: string): Promise<boolean> {
+    const athlete = db.collection("athletes").doc(athleteId);
     return await athlete.get().then((data) => {
       return data.exists;
     });
@@ -171,9 +171,9 @@ export class Firestore {
   }
 
   static async storeAthlete(data: TokenFromCodeResponse) {
-    const doc = db.collection("athletes").doc(data.athlete.id.toString());
+    const doc = db.collection("athletes").doc(data.athlete.id);
     const athlete = {
-      id: data.athlete.id.toString(),
+      id: data.athlete.id,
       firstname: data.athlete.firstname,
       lastname: data.athlete.lastname,
       refreshToken: data.refresh_token,
@@ -220,7 +220,7 @@ export class Firestore {
   // a single flat range query beats N per-athlete subcollection queries for that.
   static async getActivitiesInRange(startUnixTime: number, endUnixTime: number): Promise<StoredActivity[]> {
     const docs = await db.collection("activities").where("startDateUnix", ">=", startUnixTime).where("startDateUnix", "<", endUnixTime).get();
-    return docs.docs.map((doc) => doc.data() as StoredActivity);
+    return docs.docs.map((doc) => storedActivityFromDoc(doc.data()));
   }
 
   // Upserts by activity id, guarded by `lastEventTime` so an older write can't overwrite a newer one - between
@@ -229,7 +229,7 @@ export class Firestore {
   // back stale data, and one for a deleted activity deletes it again (see webhookEvents.ts). In a transaction, so two
   // writers can't both pass the check and let the older write land last.
   static async upsertActivity(activity: StoredActivity): Promise<void> {
-    const ref = db.collection("activities").doc(activity.id.toString());
+    const ref = db.collection("activities").doc(activity.id);
     await db.runTransaction(async (transaction) => {
       const existing = await transaction.get(ref);
       const existingLastEventTime = existing.exists ? (existing.data() as StoredActivity).lastEventTime : undefined;
@@ -243,8 +243,8 @@ export class Firestore {
   // activity. A mismatch (or a doc that's already gone) is treated as a no-op, not an error.
   // `eventTime` is when the caller learned the activity is gone: a write newer than that (e.g. a webhook storing it
   // again after it was made public) wins, like upsertActivity's guard - checked in a transaction for the same reason.
-  static async deleteActivity(activityId: number, athleteId: string, eventTime?: number): Promise<void> {
-    const ref = db.collection("activities").doc(activityId.toString());
+  static async deleteActivity(activityId: string, athleteId: string, eventTime?: number): Promise<void> {
+    const ref = db.collection("activities").doc(activityId);
     await db.runTransaction(async (transaction) => {
       const doc = await transaction.get(ref);
       if (!doc.exists) return;
@@ -257,8 +257,8 @@ export class Firestore {
 
   // Unscoped (unlike deleteActivity above): only for ids a fresh live poll proved are gone - see
   // activityStore.syncActivitiesIntoStore.
-  static async deleteActivities(activityIds: number[]): Promise<void> {
-    await this.deleteInChunks(activityIds.map((id) => db.collection("activities").doc(id.toString())));
+  static async deleteActivities(activityIds: string[]): Promise<void> {
+    await this.deleteInChunks(activityIds.map((id) => db.collection("activities").doc(id)));
   }
 
   // Firestore batches take at most 500 writes.
@@ -358,6 +358,12 @@ export interface SummerBodiesConfig {
   // Inclusive SAST calendar dates ("YYYY-MM-DD") bounding the streak challenge.
   challengeStartDate: string;
   challengeEndDate: string;
+}
+
+// Activities stored before ids became strings (stravaIds.ts) have a numeric `id` - read it as the string it now is,
+// so they still match the live activities they're compared with. Their doc ids were always the same digits.
+function storedActivityFromDoc(data: FirebaseFirestore.DocumentData): StoredActivity {
+  return { ...(data as StoredActivity), id: String(data.id) };
 }
 
 // Public-safe (no secrets) white-labeling for the website, baked in by its build - see

@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig, isAxiosError } from "axios";
 import { Athlete, Activity, AthleteWithActivities } from "./challenge-models";
+import { parseJsonWithStringIds } from "./stravaIds";
 
 const REFRESH_GRANT_TYPE = "refresh_token";
 const AUTHORIZATION_CODE_GRANT_TYPE = "authorization_code";
@@ -13,7 +14,7 @@ export class Strava {
   ) {}
 
   static async getToken(clientId: string, clientSecret: string, refreshToken: string): Promise<TokenRefreshResponse> {
-    const client = axios.create(this.axiosConfig());
+    const client = axios.create(this.axiosConfig(undefined, true));
 
     const req: TokenRefreshRequest = {
       client_id: clientId,
@@ -27,7 +28,7 @@ export class Strava {
   }
 
   async getAthleteActivities(accessToken: string, startUnixTime: number, endUnixTime: number): Promise<Activity[]> {
-    const client = axios.create(Strava.axiosConfig(accessToken));
+    const client = axios.create(Strava.axiosConfig(accessToken, true));
     const result = await client.get<Activity[]>(`/athlete/activities?after=${startUnixTime}&before=${endUnixTime}&per_page=${ACTIVITIES_PER_PAGE}`);
     return result.data;
   }
@@ -35,14 +36,14 @@ export class Strava {
   // Single-activity detail fetch - used by the webhook event handler, which only ever learns an activity id
   // (not the activity itself) from a create/update event. Needs only activity:read, same scope athletes
   // already grant today.
-  async getActivity(accessToken: string, activityId: number): Promise<Activity> {
-    const client = axios.create(Strava.axiosConfig(accessToken));
+  async getActivity(accessToken: string, activityId: string): Promise<Activity> {
+    const client = axios.create(Strava.axiosConfig(accessToken, true));
     const result = await client.get<Activity>(`/activities/${activityId}`);
     return result.data;
   }
 
   static async getTokenFromCode(clientId: string, clientSecret: string, code: string): Promise<TokenFromCodeResponse> {
-    const client = axios.create(this.axiosConfig());
+    const client = axios.create(this.axiosConfig(undefined, true));
 
     const req: TokenFromCodeRequest = {
       client_id: clientId,
@@ -144,12 +145,25 @@ export class Strava {
     await client.delete(`push_subscriptions/${subscriptionId}?client_id=${clientId}&client_secret=${clientSecret}`);
   }
 
-  private static axiosConfig(authToken?: string): AxiosRequestConfig {
+  // `stringIds` reads activity/athlete ids as exact strings - see stravaIds.ts. Not for the push subscription calls,
+  // whose `id` is a subscription id (kept a number).
+  private static axiosConfig(authToken?: string, stringIds = false): AxiosRequestConfig {
     const config: AxiosRequestConfig = {
       responseType: "json",
       headers: { "Content-Type": "application/json" },
       baseURL: "https://www.strava.com/api/v3",
     };
+    if (stringIds) {
+      // Replaces axios' own JSON parsing. Error bodies aren't always JSON, so those pass through as text.
+      config.transformResponse = (data: unknown) => {
+        if (typeof data !== "string" || data === "") return data;
+        try {
+          return parseJsonWithStringIds(data);
+        } catch {
+          return data;
+        }
+      };
+    }
     if (authToken && config.headers) config.headers.Authorization = `Bearer ${authToken}`;
 
     return config;
@@ -178,7 +192,7 @@ export interface TokenFromCodeRequest {
 export interface TokenFromCodeResponse {
   refresh_token: string;
   athlete: {
-    id: number;
+    id: string;
     firstname: string;
     lastname: string;
   };
@@ -206,11 +220,12 @@ export interface GetAllAthletesActivitiesResult {
 // https://developers.strava.com/docs/webhooks/ - the POST body Strava sends for every subscribed event.
 // Not signed/authenticated beyond the one-time subscription handshake, so a handler must independently
 // verify owner_id/object_id correspond to something real before acting on them.
+// object_id/owner_id are exact strings, not the numbers Strava sends - see stravaIds.ts and activityLogic.parseWebhookBody.
 export interface StravaWebhookEvent {
   object_type: "activity" | "athlete";
-  object_id: number;
+  object_id: string;
   aspect_type: "create" | "update" | "delete";
-  owner_id: number;
+  owner_id: string;
   updates?: Record<string, string>;
   subscription_id: number;
   event_time: number;

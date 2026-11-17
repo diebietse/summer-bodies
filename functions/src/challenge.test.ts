@@ -12,7 +12,7 @@ function athlete(id: string, activities: Partial<Activity>[]): AthleteWithActivi
     lastname: id,
     refreshToken: "",
     activities: activities.map((activity, index) => ({
-      id: index,
+      id: String(index),
       name: "Activity",
       distance: 0,
       moving_time: 0,
@@ -394,8 +394,8 @@ test("only dates after the last evaluated one are counted", () => {
 test("of two overlapping activities only the shortest is kept", () => {
   const athletes = [
     athlete("1", [
-      { id: 1, name: "Phone", start_date: "2026-10-11T08:20:47Z", elapsed_time: 6624, moving_time: 6624, distance: 6330 },
-      { id: 2, name: "Watch", start_date: "2026-10-11T08:23:03Z", elapsed_time: 4518, moving_time: 4356, distance: 4820 },
+      { id: "1", name: "Phone", start_date: "2026-10-11T08:20:47Z", elapsed_time: 6624, moving_time: 6624, distance: 6330 },
+      { id: "2", name: "Watch", start_date: "2026-10-11T08:23:03Z", elapsed_time: 4518, moving_time: 4356, distance: 4820 },
     ]),
   ];
   const { athletes: result, ignored } = Challenge.removeDuplicateActivities(athletes);
@@ -412,9 +412,9 @@ test("of two overlapping activities only the shortest is kept", () => {
 test("back-to-back and unrelated activities are all kept", () => {
   const athletes = [
     athlete("1", [
-      { id: 1, start_date: "2026-10-05T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
-      { id: 2, start_date: "2026-10-05T06:30:00Z", elapsed_time: 1800, moving_time: 1800 },
-      { id: 3, start_date: "2026-10-06T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
+      { id: "1", start_date: "2026-10-05T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
+      { id: "2", start_date: "2026-10-05T06:30:00Z", elapsed_time: 1800, moving_time: 1800 },
+      { id: "3", start_date: "2026-10-06T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
     ]),
   ];
   const { athletes: result, ignored } = Challenge.removeDuplicateActivities(athletes);
@@ -427,8 +427,8 @@ test("identical duplicates keep exactly one", () => {
   const same = { start_date: "2026-10-05T06:17:00Z", elapsed_time: 3300, moving_time: 3300 };
   const { athletes: result } = Challenge.removeDuplicateActivities([
     athlete("1", [
-      { id: 1, ...same },
-      { id: 2, ...same },
+      { id: "1", ...same },
+      { id: "2", ...same },
     ]),
   ]);
 
@@ -438,9 +438,9 @@ test("identical duplicates keep exactly one", () => {
 test("a long activity overlapping a kept shorter one is dropped, even when it also overlaps a third", () => {
   const athletes = [
     athlete("1", [
-      { id: 1, name: "A", start_date: "2026-10-05T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
-      { id: 2, name: "Long", start_date: "2026-10-05T06:10:00Z", elapsed_time: 3600, moving_time: 3600 },
-      { id: 3, name: "C", start_date: "2026-10-05T06:40:00Z", elapsed_time: 1800, moving_time: 1800 },
+      { id: "1", name: "A", start_date: "2026-10-05T06:00:00Z", elapsed_time: 1800, moving_time: 1800 },
+      { id: "2", name: "Long", start_date: "2026-10-05T06:10:00Z", elapsed_time: 3600, moving_time: 3600 },
+      { id: "3", name: "C", start_date: "2026-10-05T06:40:00Z", elapsed_time: 1800, moving_time: 1800 },
     ]),
   ];
   const { athletes: result } = Challenge.removeDuplicateActivities(athletes);
@@ -454,8 +454,8 @@ test("a long activity overlapping a kept shorter one is dropped, even when it al
 test("overlapping activities from different groups are both kept", () => {
   const athletes = [
     athlete("1", [
-      { id: 1, name: "Walk", type: "Walk", distance: 5000, start_date: "2026-10-05T06:00:00Z", elapsed_time: 3600, moving_time: 3600 },
-      { id: 2, name: "Workout", type: "Workout", distance: 0, start_date: "2026-10-05T06:20:00Z", elapsed_time: 600, moving_time: 600 },
+      { id: "1", name: "Walk", type: "Walk", distance: 5000, start_date: "2026-10-05T06:00:00Z", elapsed_time: 3600, moving_time: 3600 },
+      { id: "2", name: "Workout", type: "Workout", distance: 0, start_date: "2026-10-05T06:20:00Z", elapsed_time: 600, moving_time: 600 },
     ]),
   ];
   const { athletes: result, ignored } = Challenge.removeDuplicateActivities(athletes);

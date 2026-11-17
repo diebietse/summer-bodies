@@ -14,10 +14,10 @@ export interface WebhookDeps {
   getAthlete(athleteId: string): Promise<Athlete | null>;
   // Refreshes the athlete's Strava token, persisting the rotation, and returns an access token.
   refreshAccessToken(athlete: Athlete): Promise<string>;
-  getActivity(accessToken: string, activityId: number): Promise<Activity & { athlete?: { id: number } }>;
+  getActivity(accessToken: string, activityId: string): Promise<Activity & { athlete?: { id: string } }>;
   upsertActivity(activity: StoredActivity): Promise<void>;
   // Skipped if a write newer than `eventTime` landed meanwhile - see Firestore.deleteActivity.
-  deleteActivity(activityId: number, athleteId: string, eventTime?: number): Promise<void>;
+  deleteActivity(activityId: string, athleteId: string, eventTime?: number): Promise<void>;
   removeAthlete(athleteId: string): Promise<void>;
 }
 
